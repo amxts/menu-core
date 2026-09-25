@@ -1,0 +1,31 @@
+{
+  "name": "@amxts/menu-core",
+  "version": "1.6.2",
+  "description": "Menus for amxts plugins, from ini files or code: conditions, placeholders, lists - and the mc_* natives for Pawn plugins.",
+  "keywords": [
+    "amxts-module",
+    "amxts-menus",
+    "amxmodx",
+    "counter-strike"
+  ],
+  "author": "kukson",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amxts/menu-core.git"
+  },
+  "homepage": "https://github.com/amxts/menu-core#readme",
+  "files": [
+    "modules/menu-core.ts",
+    "menu-core.ts",
+    "menu_core.inc",
+    "README.md",
+    "README.ru.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@amxts/universal-config": "^1.6.1"
+  }
+}
