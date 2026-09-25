@@ -1,9 +1,10 @@
 {
 	// The core's editor config and its `~/` alias, from the installed @amxts/core
-	// (a file: link while everything is local).
+	// (a file: link while everything is local). The core targets ES5 for its
+	// for...of over AssemblyScript arrays, which TypeScript 6 calls deprecated.
 	"extends": "@amxts/core/as/tsconfig.json",
 	"compilerOptions": {
-		"baseUrl": ".",
+		"ignoreDeprecations": "6.0",
 		"paths": {
 			"~/*": ["./node_modules/@amxts/core/as/*"]
 		},
