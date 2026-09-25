@@ -4,6 +4,7 @@
  */
 import {
 	Access,
+	accessOf,
 	Forward,
 	MenuItemOptions,
 	MenuShowOptions,
@@ -41,34 +42,6 @@ const MAX_DEPTH = 5;
 const PLAYER_TASK = 0x4D430100;
 const MENU_TASK = 0x4D431000;
 const ALL_KEYS = 1023;
-/** users.ini letters, in the order of their Access names. */
-const ACCESS_LETTERS = "abcdefghijklmnopqrstuvyz";
-const ACCESS_NAMES: Access[] = [
-	"Immunity",
-	"Reservation",
-	"Kick",
-	"Ban",
-	"Slay",
-	"Map",
-	"Cvar",
-	"Cfg",
-	"Chat",
-	"Vote",
-	"Password",
-	"Rcon",
-	"LevelA",
-	"LevelB",
-	"LevelC",
-	"LevelD",
-	"LevelE",
-	"LevelF",
-	"LevelG",
-	"LevelH",
-	"Menu",
-	"BanTemp",
-	"Admin",
-	"User",
-];
 const ADMIN_ACCESS: Access[] = ["Ban", "Rcon", "Admin", "Menu"];
 const KEY_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
 
@@ -1173,10 +1146,7 @@ function hasAccess(player: Player, name: string) {
 	if (upper == "ADMIN" || upper == "ACCESS_ADMIN") {
 		for (const each of ADMIN_ACCESS) wanted.push(each);
 	} else {
-		for (const letter of name.slice(5).split("")) {
-			const at = ACCESS_LETTERS.indexOf(letter);
-			if (at >= 0) wanted.push(ACCESS_NAMES[at]);
-		}
+		for (const each of accessOf(name.slice(5))) wanted.push(each);
 	}
 
 	for (const each of wanted) {

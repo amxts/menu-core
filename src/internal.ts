@@ -1,5 +1,7 @@
-// The module's own bookkeeping: what it keeps about registrations, viewers
-// and the menu being drawn. Not part of its API - index.ts does not export it.
+/**
+ * Menu Core's own bookkeeping: registrations, viewers and the menu being drawn.
+ * Not part of the API.
+ */
 import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, Menu, MenuEventType, MenuListener, PlaceholderValue, RestrictionTest } from "./types";
 
 export interface ConditionEntry {

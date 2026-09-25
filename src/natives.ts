@@ -1,16 +1,6 @@
 /**
- * The `mc_*` natives: menu-core for Pawn plugins.
- *
- * The 29 natives of the original menu_core.amxx, with the parameters, tags and
- * defaults of `include/menu_core.inc`, so a Pawn plugin built against it loads
- * unchanged. Each `export function` here is a native of the same name, over
- * the module in `./index`; its JSDoc becomes the include's comments, hence
- * English. A Pawn plugin names its callbacks - conditions, actions,
- * placeholders - by public name, and they are called back through
- * PawnFunction.
- *
- * A TypeScript plugin does not need these: it imports the module,
- * `import * as menus from "@amxts/menu-core"`.
+ * Menu Core for Pawn plugins: the 29 mc_* natives of the original
+ * menu_core.amxx, as include/menu_core.inc declares them.
  */
 import {
 	PawnFunction,

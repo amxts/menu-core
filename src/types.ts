@@ -1,4 +1,7 @@
-// The public types of menu-core: what its functions take and give back.
+/**
+ * The types of Menu Core's API: menus, items, rows and the callbacks plugins
+ * register.
+ */
 import { Player } from "~/facade";
 
 /** "items": a list of items. "list": a row per player, or per row a list source gives. */
