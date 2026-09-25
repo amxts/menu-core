@@ -8,7 +8,10 @@
     "amxmodx",
     "counter-strike"
   ],
-  "author": "kukson",
+  "author": {
+    "name": "kukson777",
+    "url": "https://github.com/kukson777"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
