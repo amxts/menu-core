@@ -1,38 +1,6 @@
 /**
- * menu-core — menus for amxts plugins.
- *
- * A menu is written in an ini file or built in code; the module shows it to a
- * player and answers the keys he presses. Seven rows a page: 8 and 9 turn the
- * pages or go back, 0 closes.
- *
- * ```ts
- * import * as menus from "@amxts/menu-core";
- *
- * menus.setConfigFile("myplugin/menu");              // configs/myplugin/menu.ini
- * menus.addCondition("IS_ALIVE", player => player.isAlive);
- * menus.addAction("RESET_SCORE", (player) => { player.frags = 0; });
- * menus.addPlaceholder("hp", player => `${player.health}`);
- *
- * const shop = menus.create("SHOP", "Shop");
- * menus.addItem(shop, "Heal %hp%", { onSelect: heal });
- * menus.show(player, "SHOP");
- * ```
- *
- * Two kinds of menu:
- * - **items** — a list of items: a `[SECTION]` of the file (TITLE, ITEMS,
- *   FIXED_ITEMS, ...) or one made with `create()`;
- * - **list** — a name starting with `LIST_`: one row per player, or per row a
- *   list source gives, drawn from its VIEW template.
- *
- * Conditions, actions and placeholders go by name: the file names them, and
- * whichever plugin registered the name answers — a TypeScript plugin here, a
- * Pawn plugin through the `mc_*` natives (`include/menu_core.inc`).
- *
- * The server runs one instance of the module, in its own plugin
- * (`src/natives.ts`). Every plugin that imports it talks to that instance, so a
- * menu has the items all plugins added and a player has one open menu.
- *
- * The types are in `./types`.
+ * Menu Core — an opinionated way to create menus: from an ini file or in code,
+ * with conditions, placeholders and lists. How to use it: README.md.
  */
 import {
 	Access,
@@ -59,10 +27,10 @@ const DEFAULTS: Labels = {
 	exit: "Exit",
 	back: "Back",
 	next: "Next",
-	number: "\\y[%d]\\w",
-	disabled: "\\d[%d]",
-	page: "\\y[\\r%d\\y | \\y%d\\y]",
-	time: "Time left \\y[\\r%d \\wsec\\y]",
+	number: "!y[%d]!w",
+	disabled: "!d[%d]",
+	page: "!y[!r%d!y | !y%d!y]",
+	time: "Time left !y[!r%d !wsec!y]",
 	prefix: "!g[MenuCore]!y",
 };
 
@@ -874,7 +842,7 @@ function addNavigation(screen: Screen, id: number, key: number, text: string) {
 }
 
 function addLine(screen: Screen, id: number, slot: number, text: string, enabled: boolean, reason: string) {
-	const shown = reason.length > 0 ? `${text}\\y${reason}` : text;
+	const shown = reason.length > 0 ? `${text}!y${reason}` : text;
 	screen.text += `${itemLabel(id, slot + 1, shown, !enabled)}\n`;
 	if (enabled) screen.keys.push(slot + 1);
 }
