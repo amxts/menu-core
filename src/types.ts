@@ -9,12 +9,17 @@ export type MenuKind = "items" | "list";
 
 /** One way an item can look: shown when its condition holds, the first that does. */
 export interface Variant {
+	/** The text shown: a lang key or the text itself. */
 	name: string;
+	/** The condition it is shown under; "" is always. */
 	condition: string;
+	/** What choosing it does: a registered action or a built-in one. */
 	action: string;
 }
 
+/** An item of a menu. */
 export interface MenuItem {
+	/** The ways it can look - "A|B" in menu.ini - the first whose condition holds is shown. */
 	variants: Variant[];
 	/** Text after the name, placeholders and all: "%hp%". */
 	placeholder: string;
@@ -22,7 +27,9 @@ export interface MenuItem {
 	restriction: string;
 	/** Why it is greyed out: "NAME:message|NAME2:message", or one message. */
 	restrictionMessage: string;
+	/** Blank lines before it. */
 	spaceBefore: number;
+	/** Blank lines after it. */
 	spaceAfter: number;
 	/** The slot a fixed item always takes, 0-6; -1 for an item in the flow. */
 	slot: number;
@@ -30,21 +37,31 @@ export interface MenuItem {
 
 /** Rows of a list menu that fail the condition are left out; `message` says so when none is left. */
 export interface ListFilter {
+	/** The condition a row must pass. */
 	condition: string;
+	/** What the player is told when no row passes. */
 	message: string;
 }
 
+/** A menu, from menu.ini or made in code. */
 export interface Menu {
+	/** Its section name: "MAIN_MENU". */
 	name: string;
+	/** The title: a lang key or the text itself. */
 	title: string;
+	/** "items", or "list" - a row per player or per row of a list source. */
 	kind: MenuKind;
 	/** The menu opens only while this condition holds. */
 	activeOn: string;
+	/** A list menu's filters: rows that fail one are left out. */
 	filters: ListFilter[];
 	/** The items in the flow; a list menu's first one is its row template (VIEW). */
 	items: MenuItem[];
+	/** Items that keep their slot on every page (FIXED_ITEMS). */
 	fixed: MenuItem[];
+	/** No "Back" button. */
 	hideBack: boolean;
+	/** No "Exit" button. */
 	hideExit: boolean;
 	/** Items cannot be chosen, and no other menu replaces it. */
 	locked: boolean;
@@ -68,7 +85,9 @@ export interface ListRow {
 	text: string;
 	/** An action of its own, instead of the template's. */
 	action: string;
+	/** Restriction names, space-separated: the row is greyed out unless each passes. */
 	restriction: string;
+	/** Why it is greyed out; "" is the restriction's own message. */
 	restrictionMessage: string;
 }
 
