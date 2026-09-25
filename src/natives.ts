@@ -12,13 +12,6 @@
  * A TypeScript plugin does not need these: it imports the module,
  * `import * as menus from "@amxts/menu-core"`.
  */
-import that and needs no natives. This file is the natives over
-// it: each `export function` is a native of the same name, with the
-// parameters, tags and defaults of menu_core.inc, so old .amxx plugins load
-// against it unchanged. A Pawn plugin names its callbacks - conditions,
-// actions, placeholders - by public name; they are called back through
-// PawnFunction. Its JSDoc becomes the generated include's comments - hence
-// English.
 import {
 	PawnFunction,
 	Player,
