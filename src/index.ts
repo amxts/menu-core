@@ -29,7 +29,7 @@
  * Pawn plugin through the `mc_*` natives (`include/menu_core.inc`).
  *
  * The server runs one instance of the module, in its own plugin
- * (`src/plugin.ts`). Every plugin that imports it talks to that instance, so a
+ * (`src/natives.ts`). Every plugin that imports it talks to that instance, so a
  * menu has the items all plugins added and a player has one open menu.
  *
  * The types are in `./types`.
