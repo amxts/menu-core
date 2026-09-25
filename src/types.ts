@@ -101,3 +101,15 @@ export class MenuEvent {
 		this.defaultPrevented = true;
 	}
 }
+
+/** Menu Core's options: `menus` in amxts.config.ts. */
+export interface MenuCoreOptions {
+	/** The menu file, from configs/: "menu" is configs/menu.ini, "myserver/menu" configs/myserver/menu.ini. */
+	file: string;
+}
+
+declare module "@amxts/core" {
+	interface ModuleOptions {
+		menus?: Partial<MenuCoreOptions>;
+	}
+}

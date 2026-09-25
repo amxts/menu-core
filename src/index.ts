@@ -18,11 +18,20 @@ import {
 } from "~/facade";
 import { GetLangTransKey, LookupLangKey, get_maxplayers, register_menucmd, register_menuid } from "~/natives";
 import * as ini from "@amxts/universal-config";
-import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, Menu, MenuEvent, MenuEventType, MenuItem, MenuListener, PlaceholderValue, RestrictionTest, Variant } from "./types";
+import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, Menu, MenuCoreOptions, MenuEvent, MenuEventType, MenuItem, MenuListener, PlaceholderValue, RestrictionTest, Variant } from "./types";
 
 import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, ListenerEntry, Viewer, Listing, Screen, Labels } from "./internal";
 
 export * from "./types";
+
+export default defineModule<MenuCoreOptions>({
+	meta: { name: "menu-core", configKey: "menus" },
+	requires: ["@amxts/universal-config"],
+	defaults: { file: "menu" },
+	setup(options) {
+		setConfigFile(options.file);
+	},
+});
 
 const DEFAULTS: Labels = {
 	exit: "Exit",

@@ -36,10 +36,6 @@ export enum MenuProperty {
 	MP_FILTER = 7,
 }
 
-// menu.ini sits where nhnse_core's cfg_set_base_dir("nhnse") pointed the
-// original: configs/nhnse/, else configs/.
-menus.setConfigFile("nhnse/menu", "menu");
-
 /** A list data source's item: 289 cells, laid out as menu_core.inc says. */
 const ROW_CELLS = 289;
 const PLACEHOLDER_CELLS = 256;
