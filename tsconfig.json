@@ -1,13 +1,11 @@
 {
-	// While everything is local: the core's editor config and its `~/` alias
-	// from the neighbouring checkout, like the file: links in package.json.
-	// Once @amxts/core is a package this extends it instead.
-	"extends": "../../ts2pawn/as/tsconfig.json",
+	// The core's editor config and its `~/` alias, from the installed @amxts/core
+	// (a file: link while everything is local).
+	"extends": "@amxts/core/as/tsconfig.json",
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"~/*": ["../../ts2pawn/as/*"],
-			"@amxts/universal-config": ["../universal-config/src/index.ts"]
+			"~/*": ["./node_modules/@amxts/core/as/*"]
 		},
 		"noEmit": true
 	},
