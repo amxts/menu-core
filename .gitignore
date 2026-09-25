@@ -1,2 +1,7 @@
 node_modules/
 *.tgz
+# a library: the consumer resolves its own versions
+bun.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
