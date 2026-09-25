@@ -1,43 +1,47 @@
 {
-	"name": "@amxts/menu-core",
-	"type": "module",
-	"version": "1.6.2",
-	"description": "Menus for amxts plugins, from ini files or code: conditions, placeholders, lists - and the mc_* natives for Pawn plugins.",
-	"author": {
-		"name": "kukson777",
-		"url": "https://github.com/kukson777"
-	},
-	"license": "MIT",
-	"homepage": "https://github.com/amxts/menu-core#readme",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/amxts/menu-core.git"
-	},
-	"keywords": [
-		"amxts-module",
-		"amxts-menus",
-		"amxmodx",
-		"counter-strike"
-	],
-	"files": [
-		"README.md",
-		"README.ru.md",
-		"menu-core.ts",
-		"menu_core.inc",
-		"modules/menu-core.ts"
-	],
-	"scripts": {
-		"lint": "eslint",
-		"lint:fix": "eslint --fix"
-	},
-	"peerDependencies": {
-		"@amxts/universal-config": "^1.6.1"
-	},
-	"devDependencies": {
-		"@antfu/eslint-config": "^9.5.1",
-		"eslint": "^10.11.0"
-	},
-	"publishConfig": {
-		"access": "public"
-	}
+  "name": "@amxts/menu-core",
+  "type": "module",
+  "version": "1.6.2",
+  "description": "Menus for amxts plugins, from ini files or code: conditions, placeholders, lists - and the mc_* natives for Pawn plugins.",
+  "author": {
+    "name": "kukson777",
+    "url": "https://github.com/kukson777"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/amxts/menu-core#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amxts/menu-core.git"
+  },
+  "keywords": [
+    "amxts-module",
+    "amxts-menus",
+    "amxmodx",
+    "counter-strike"
+  ],
+  "files": [
+    "src",
+    "include",
+    "README.md",
+    "README.ru.md"
+  ],
+  "amxts": {
+    "module": "src/module.ts",
+    "plugin": "src/plugin.ts",
+    "include": "include/menu_core.inc"
+  },
+  "scripts": {
+    "lint": "eslint",
+    "lint:fix": "eslint --fix"
+  },
+  "peerDependencies": {
+    "@amxts/universal-config": "file:../universal-config"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.5.1",
+    "eslint": "^10.11.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

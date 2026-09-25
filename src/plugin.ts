@@ -22,7 +22,7 @@ import {
 	pushCellArrayRow,
 	textCells,
 } from "~/facade";
-import * as menus from "~/modules/menu-core";
+import * as menus from "./module";
 
 plugin({ name: "Menu Core", version: "1.6.2", author: "kukson", description: "Menus from ini files: the mc_* natives" });
 
