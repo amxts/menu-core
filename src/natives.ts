@@ -1,9 +1,18 @@
-// Menu Core 1.6.2 in TypeScript: the 29 mc_* natives of menu_core.amxx, for
-// the Pawn plugins built on it (the nhnse modules, knife, surf, jbe) and for
-// TypeScript plugins that call them through `~/natives`.
-//
-// Menus, drawing, keys and countdowns are `~/modules/menu-core`; a TypeScript
-// plugin can import that and needs no natives. This file is the natives over
+/**
+ * The `mc_*` natives: menu-core for Pawn plugins.
+ *
+ * The 29 natives of the original menu_core.amxx, with the parameters, tags and
+ * defaults of `include/menu_core.inc`, so a Pawn plugin built against it loads
+ * unchanged. Each `export function` here is a native of the same name, over
+ * the module in `./index`; its JSDoc becomes the include's comments, hence
+ * English. A Pawn plugin names its callbacks - conditions, actions,
+ * placeholders - by public name, and they are called back through
+ * PawnFunction.
+ *
+ * A TypeScript plugin does not need these: it imports the module,
+ * `import * as menus from "@amxts/menu-core"`.
+ */
+import that and needs no natives. This file is the natives over
 // it: each `export function` is a native of the same name, with the
 // parameters, tags and defaults of menu_core.inc, so old .amxx plugins load
 // against it unchanged. A Pawn plugin names its callbacks - conditions,
