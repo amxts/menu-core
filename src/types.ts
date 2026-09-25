@@ -106,6 +106,8 @@ export class MenuEvent {
 export interface MenuCoreOptions {
 	/** The menu file, from configs/: "menu" is configs/menu.ini, "myserver/menu" configs/myserver/menu.ini. */
 	file: string;
+	/** Read instead when `file` has no menus: "menu" falls back to configs/menu.ini. "" is none. */
+	fallback: string;
 }
 
 declare module "@amxts/core" {

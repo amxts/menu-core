@@ -27,9 +27,9 @@ export * from "./types";
 export default defineModule<MenuCoreOptions>({
 	meta: { name: "menu-core", configKey: "menus" },
 	requires: ["@amxts/universal-config"],
-	defaults: { file: "menu" },
+	defaults: { file: "menu", fallback: "" },
 	setup(options) {
-		setConfigFile(options.file);
+		setConfigFile(options.file, options.fallback);
 	},
 });
 
