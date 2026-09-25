@@ -5,10 +5,10 @@ keys answered through `register_menucmd`. It is menu_core in TypeScript: a
 module a TypeScript plugin imports, and a plugin that gives Pawn plugins
 menu_core's `mc_*` natives.
 
-::: warning In progress
-menu-core is still being finished. It has been tried in game only once, and
-behaviour may still change.
-:::
+> [!WARNING]
+> **In progress**
+> menu-core is still being finished. It has been tried in game only once, and
+> behaviour may still change.
 
 ## From TypeScript
 
