@@ -47,7 +47,7 @@ export default defineConfig({
 });
 ```
 
-Menu Core reads its menus through [Universal Config](https://github.com/amxts/universal-config). The package manager installs it along with Menu Core, and the build loads it first, so there is nothing to add for it.
+Menu Core reads its menus through [Config Core](https://github.com/amxts/config-core). The package manager installs it along with Menu Core, and the build loads it first, so there is nothing to add for it.
 
 | Option | Default | What it does |
 | --- | --- | --- |
@@ -165,7 +165,7 @@ const menus = installMenus(server);
 const admin = menus.pawnPlugin("admin.amxx", {
 	OnKick: (_id: number, target: number) => kicked.push(target),
 });
-await server.load("@amxts/universal-config");
+await server.load("@amxts/config-core");
 await server.load("@amxts/menu-core");
 server.start();
 

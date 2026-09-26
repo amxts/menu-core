@@ -42,8 +42,8 @@
 		"lint:fix": "eslint --fix"
 	},
 	"peerDependencies": {
-		"@amxts/core": "file:../../ts2pawn",
-		"@amxts/universal-config": "file:../universal-config"
+		"@amxts/config-core": "file:../config-core",
+		"@amxts/core": "file:../../ts2pawn"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.5.1",
