@@ -2,13 +2,13 @@
  * Menu Core — an opinionated way to create menus: from an ini file or in code,
  * with conditions, placeholders and lists. How to use it: README.md.
  */
-import { Access, accessOf, Forward, Player, clearInterval, print, server, setInterval } from "@amxts/core";
+import { Access, accessOf, Forward, Player, clearInterval, print, server, setInterval, setTimeout } from "@amxts/core";
 import { publicFor, showMenu } from "@amxts/core/kit";
 import { GetLangTransKey, LookupLangKey, get_maxplayers, register_menucmd, register_menuid } from "~/natives";
-import * as ini from "@amxts/config-core";
 import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuCoreOptions, MenuEventType, MenuItemOptions, MenuKind, MenuOptions, MenuShowOptions, MenuText, PlaceholderValue, RestrictionTest, RowTest } from "./types";
 
-import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, Screen, Labels, MenuItem, Variant, addNamedFilter, stateOf, textOf } from "./internal";
+import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, Screen, Labels, MenuItem, Variant, ItemSpec, MenuFile, NameUse, addNamedFilter, stateOf, textOf } from "./internal";
+import { readMenuFile, suggestion, warn } from "./menu-file";
 
 export * from "./types";
 
@@ -22,8 +22,8 @@ export default defineModule<MenuCoreOptions>({
 });
 
 /**
- * A menu: read from menu.ini, or made with `create()`. The fields are what
- * menu.ini sets; the methods fill the menu, open it and count it down.
+ * A menu: read from a menu file, or made with `create()`. The fields are what
+ * the file sets; the methods fill the menu, open it and count it down.
  *
  *     const shop = menus.create("SHOP", { title: "Shop" });
  *     shop.addItem("Heal", { onSelect: heal });
@@ -50,7 +50,7 @@ export class Menu {
 	countdown = 0;
 
 	constructor(
-		/** The menu's name - its section in menu.ini, e.g. "MAIN_MENU". */
+		/** The menu's name - its name in the menu file, e.g. "MAIN_MENU". */
 		readonly name: string,
 		/** The menu's title: the text - a lang key too - or a function that gives it for the player who looks. */
 		public title: MenuText,
@@ -90,7 +90,7 @@ export class Menu {
 		stateOf(this.name).filters.push({ condition: "", test, message: message ?? "" });
 	}
 
-	/** A placeholder of this menu, for menu.ini and Pawn plugins: the text %name% stands for, before the ones registered with `addPlaceholder()`. In code the text is a function instead. */
+	/** A placeholder of this menu, for menu files and Pawn plugins: the text %name% stands for, before the ones registered with `addPlaceholder()`. In code the text is a function instead. */
 	addPlaceholder(name: string, value: PlaceholderValue) {
 		stateOf(this.name).placeholders.push({ name, value });
 	}
@@ -235,16 +235,24 @@ const timerExpired = new Forward<string>("mc_menu_timer_expired");
 
 let configFile = "menu";
 let fallbackFile = "";
-let config: ini.Config | null = null;
+let menuFile: MenuFile | null = null;
 let started = false;
+/** Whether the names a menu file uses are checked as it is read: once every plugin has registered its own. */
+let checking = false;
 /** Menus made before plugin_init: their keys are registered then. */
 const waiting: Menu[] = [];
 let selectCount = 0;
+/** The placeholders every menu has. */
+const BUILT_IN_PLACEHOLDERS = ["name", "target", "time", "TIME"];
 
 server.addEventListener("init", () => {
 	started = true;
 	for (const menu of waiting) listenForKeys(menu);
 	waiting.length = 0;
+	// Plugins register their conditions and actions in plugin_init and
+	// plugin_cfg - Pawn ones too, after this - and the first frame comes after
+	// every one of them.
+	setTimeout(startChecking);
 });
 
 server.addEventListener("putinserver", (event) => {
@@ -262,13 +270,14 @@ server.addEventListener("disconnected", (event) => {
 });
 
 /**
- * Sets the file menus are read from, under configs/ and without ".ini"; read
- * when a menu is first asked for. `fallback` is read instead when `file` has no sections.
+ * Sets the file menus are read from, under configs/: without an extension,
+ * the first of .ini, .yaml, .yml, .json and .jsonc that is there. Read when
+ * a menu is first asked for; `fallback` is read instead when `file` is empty.
  */
 export function setConfigFile(file: string, fallback?: string) {
 	configFile = file;
 	fallbackFile = fallback ?? "";
-	config = null;
+	menuFile = null;
 }
 
 /** A menu by its name; null when there is none - `register()` reads one from the file. */
@@ -288,24 +297,26 @@ export function menuAt(index: number) {
 	return menus[index];
 }
 
-/** The menu of the file's [name] section, read now if it is not yet; null when there is no such section or no items in it. */
+/** The menu of that name in the menu file, read now if it is not yet; null when the file has no such menu, or no items in it. */
 export function register(name: string) {
 	const known = find(name);
 	if (known != null) return known;
-	if (name.toUpperCase() == "MAIN") return null;
+	const spec = loadedFile().menus.find(each => each.name == name);
+	if (spec == null) return null;
 
-	const section = ini.section(loadedConfig(), name);
-	if (section == null) return null;
-	const title = ini.getValue(section, "TITLE");
-	if (title == null) return null;
-
-	const menu = new Menu(name, title);
-	readOptions(menu, section);
-	if (menu.kind == "list") readList(menu, section);
-	else readRows(menu, section, "ITEMS");
-	readFixed(menu, section);
+	const menu = new Menu(name, spec.title);
+	menu.activeOn = spec.activeOn;
+	menu.hideBack = spec.hideBack;
+	menu.hideExit = spec.hideExit;
+	menu.locked = spec.locked;
+	menu.sharedTimer = spec.sharedTimer;
+	menu.time = spec.time;
+	menu.onTimeout = spec.onTimeout;
 
 	const state = stateOf(name);
+	for (const item of spec.items) state.items.push(itemOfSpec(item));
+	for (const item of spec.fixed) state.fixed.push(itemOfSpec(item));
+	for (const filter of spec.filters) addNamedFilter(name, filter.condition, filter.message);
 
 	if (state.items.length + state.fixed.length == 0) {
 		console.error(`[MenuSystem] ERROR: No items found for menu section '${name}'`);
@@ -350,19 +361,19 @@ function itemOf(menu: Menu, text: MenuText, options: MenuItemOptions, slot: numb
 	return item;
 }
 
-/** Registers a condition by name, for menu.ini and Pawn plugins; the first one registered under a name is the one asked. */
+/** Registers a condition by name, for menu files and Pawn plugins; the first one registered under a name is the one asked. */
 export function addCondition(name: string, test: ConditionTest) {
 	conditions.push({ name, test });
 	return conditions.length - 1;
 }
 
-/** Registers an action by name, for menu.ini and Pawn plugins; SHOW_<MENU> and CLOSE_MENU are built in. */
+/** Registers an action by name, for menu files and Pawn plugins; SHOW_<MENU> and CLOSE_MENU are built in. */
 export function addAction(name: string, run: ActionHandler) {
 	actions.push({ name, run });
 	return actions.length - 1;
 }
 
-/** Registers a placeholder for menu.ini and Pawn plugins: the text %name% stands for in titles and items. A name registered twice keeps the first. In code the text is a function instead. */
+/** Registers a placeholder for menu files and Pawn plugins: the text %name% stands for in titles and items. A name registered twice keeps the first. In code the text is a function instead. */
 export function addPlaceholder(name: string, value: PlaceholderValue) {
 	const known = placeholders.findIndex(entry => entry.name == name);
 	if (known >= 0) return known;
@@ -547,121 +558,103 @@ export function runActions(player: Player, line: string, target = 0) {
 	}
 }
 
-function loadedConfig() {
-	const loaded = config;
-	if (loaded != null) return loaded;
-	let read = ini.load(configFile);
-	if (read.sections.length == 0 && fallbackFile.length > 0) read = ini.load(fallbackFile);
-	config = read;
-	readLabels(read);
+/** The menu file, read when a menu is first asked for; the fallback file instead when it has nothing in it. */
+function loadedFile() {
+	const known = menuFile;
+	if (known != null) return known;
+	let read = readMenuFile(configFile);
+	if (read.empty && fallbackFile.length > 0) read = readMenuFile(fallbackFile);
+	menuFile = read;
+	setLabels(read.labels);
+	if (checking) checkNames(read);
 	return read;
 }
 
-function readLabels(file: ini.Config) {
-	const main = ini.section(file, "MAIN");
-	if (main == null) return;
-	labels.exit = valueOr(main, "KEY/EXIT", labels.exit);
-	labels.back = valueOr(main, "KEY/BACK", labels.back);
-	labels.next = valueOr(main, "KEY/NEXT", labels.next);
-	labels.number = valueOr(main, "KEY/NUMBER", labels.number);
-	labels.disabled = valueOr(main, "KEY/DISABLED", labels.disabled);
-	labels.page = valueOr(main, "KEY/PAGE", labels.page);
-	labels.time = valueOr(main, "KEY/TIME", labels.time);
-	labels.prefix = valueOr(main, "PREFIX", labels.prefix);
+/** The file's words; one it leaves out stays as it was. */
+function setLabels(read: Labels) {
+	if (read.exit.length > 0) labels.exit = read.exit;
+	if (read.back.length > 0) labels.back = read.back;
+	if (read.next.length > 0) labels.next = read.next;
+	if (read.number.length > 0) labels.number = read.number;
+	if (read.disabled.length > 0) labels.disabled = read.disabled;
+	if (read.page.length > 0) labels.page = read.page;
+	if (read.time.length > 0) labels.time = read.time;
+	if (read.prefix.length > 0) labels.prefix = read.prefix;
 }
 
-function valueOr(section: ini.Section, path: string, fallback: string) {
-	return ini.getValueByPath(section, path) ?? fallback;
+function itemOfSpec(spec: ItemSpec) {
+	const item = makeItem(spec.name, spec.placeholder, spec.condition, spec.action, spec.restriction, spec.message, spec.slot);
+	item.spaceBefore = spec.spaceBefore;
+	item.spaceAfter = spec.spaceAfter;
+	item.variants = spec.variants;
+	return item;
 }
 
-/** YES, true, or a number other than 0. */
-function flag(section: ini.Section, key: string) {
-	const value = ini.getValue(section, key);
-	if (value == null) return false;
-	const lower = value.toLowerCase();
-	return toInt(value) != 0 || lower == "true" || lower == "yes";
+/** The first frame: every plugin has registered its names, so the menu file's are checked - now, and in every file read from now on. */
+function startChecking() {
+	checking = true;
+	const known = menuFile;
+	if (known != null) checkNames(known);
+	else loadedFile();
 }
 
-function toInt(text: string) {
-	const value = parseInt(text, 10);
-	return isNaN(value) ? 0 : value;
-}
-
-function readOptions(menu: Menu, section: ini.Section) {
-	const activeOn: string[] = [];
-	for (let i = 0; i < ini.size(section, "ACTIVE_ON"); i++) {
-		const word = ini.getValue(section, "ACTIVE_ON", i);
-		if (word != null) activeOn.push(word);
-	}
-	menu.activeOn = activeOn.join(" ");
-
-	menu.hideBack = flag(section, "HIDE_BACK");
-	menu.hideExit = flag(section, "HIDE_EXIT");
-	menu.locked = flag(section, "LOCKED");
-	menu.sharedTimer = flag(section, "GLOBAL");
-	const time = ini.getValue(section, "TIME");
-	if (time != null) menu.time = toInt(time);
-	const onTimeout = ini.getValue(section, "ON_TIMEOUT");
-	if (onTimeout != null) menu.onTimeout = onTimeout;
-}
-
-/** The rows of a block, each as its columns. */
-function blockRows(section: ini.Section, key: string) {
-	const rows: string[][] = [];
-	for (let line = 0; line < ini.size(section, key); line++) {
-		const values = ini.getValues(section, key, 0, line);
-		if (values != null) rows.push(values);
-	}
-	return rows;
-}
-
-function column(row: string[], index: number) {
-	return index < row.length ? row[index] : "";
-}
-
-/** ITEMS: name, placeholder, condition, action, restriction, message, spacing. */
-function readRows(menu: Menu, section: ini.Section, key: string) {
-	for (const row of blockRows(section, key)) {
-		if (!hasText(column(row, 0))) continue;
-		const item = makeItem(column(row, 0), column(row, 1), column(row, 2), column(row, 3), column(row, 4), column(row, 5), -1);
-		setSpacing(item, column(row, 6));
-		stateOf(menu.name).items.push(item);
+/** Warns of each condition, action, restriction and placeholder a menu file names that nobody registered. */
+function checkNames(file: MenuFile) {
+	for (const menu of file.menus) {
+		for (const use of menu.names) checkName(use, menu.name, file);
 	}
 }
 
-/** FILTER rows (condition, message) and the VIEW template (name, condition, action, restriction, message). */
-function readList(menu: Menu, section: ini.Section) {
-	for (const row of blockRows(section, "FILTER")) addNamedFilter(menu.name, column(row, 0), column(row, 1));
-
-	const views = blockRows(section, "VIEW");
-	if (views.length == 0) return;
-	const view = views[0];
-	if (!hasText(column(view, 0))) return;
-	const item = makeItem(column(view, 0), "", column(view, 1), column(view, 2), column(view, 3), column(view, 4), -1);
-	stateOf(menu.name).items.push(item);
-}
-
-/** FIXED_ITEMS: slot, name, placeholder, condition, action, restriction, message, spacing. */
-function readFixed(menu: Menu, section: ini.Section) {
-	for (const row of blockRows(section, "FIXED_ITEMS")) {
-		if (!hasText(column(row, 1))) continue;
-		const item = makeItem(column(row, 1), column(row, 2), column(row, 3), column(row, 4), column(row, 5), column(row, 6), toInt(column(row, 0)) - 1);
-		setSpacing(item, column(row, 7));
-		stateOf(menu.name).fixed.push(item);
+function checkName(use: NameUse, menu: string, file: MenuFile) {
+	const tokens: string[] = [];
+	if (use.kind == "placeholder") tokens.push(use.name);
+	else use.name.split("|").forEach(variant => words(variant).forEach(token => tokens.push(token.startsWith("!") ? token.slice(1) : token)));
+	for (const name of tokens) {
+		const problem = unknownName(use, name, menu, file);
+		if (problem.length > 0) warn(use.where, `${menu}: ${problem}`);
 	}
 }
 
-/** "2" is two blank lines after the item; "1 2" one before and two after. */
-function setSpacing(item: MenuItem, spacing: string) {
-	const parts = words(spacing);
+/** What is wrong with a name a menu file uses - "the action "X" is not registered" - or "" when nothing is. */
+function unknownName(use: NameUse, name: string, menu: string, file: MenuFile) {
+	if (use.kind == "condition") return knownCondition(name) ? "" : `the condition "${name}" is not registered${suggestion(name, conditionNames())}`;
+	if (use.kind == "restriction") return unknownRestriction(name);
+	if (use.kind == "action") return unknownAction(name, file);
+	const own = stateOf(menu).placeholders.map(entry => entry.name);
+	const all = BUILT_IN_PLACEHOLDERS.concat(own).concat(placeholders.map(entry => entry.name));
+	return all.includes(name) ? "" : `the placeholder %${name}% is not registered${suggestion(name, all)}`;
+}
 
-	if (parts.length == 1) {
-		item.spaceAfter = toInt(parts[0]);
-		return;
+function knownCondition(name: string) {
+	return conditionNamed(name) != null || isAccessCondition(name);
+}
+
+function conditionNames() {
+	return conditions.map(entry => entry.name).concat(["ADMIN"]);
+}
+
+/** A restriction is asked among restrictions, then "*", then conditions - see check(). */
+function unknownRestriction(token: string) {
+	const colon = token.indexOf(":");
+	const name = colon < 0 ? token : token.slice(0, colon);
+	if (restrictionNamed(name) != null || wildcardRestriction() != null || knownCondition(name)) return "";
+	const known = restrictions.map(entry => entry.name).concat(conditionNames());
+	return `the restriction "${name}" is not registered${suggestion(name, known)}`;
+}
+
+function unknownAction(name: string, file: MenuFile) {
+	if (name == "CLOSE_MENU" || actionNamed(name) != null) return "";
+	const menuNames = file.menus.map(each => each.name).concat(menus.map(each => each.name));
+
+	if (name.startsWith("SHOW_")) {
+		const target = name.slice(5);
+		if (menuNames.includes(target)) return "";
+		return `${name} opens the menu "${target}", which is not there${suggestion(target, menuNames)}`;
 	}
 
-	item.spaceBefore = parts.length > 0 ? toInt(parts[0]) : 0;
-	item.spaceAfter = parts.length > 1 ? toInt(parts[1]) : 0;
+	// The actions items made in code were given ("SHOP#1") are no one's to name.
+	const known = actions.map(entry => entry.name).filter(each => !each.includes("#")).concat(["CLOSE_MENU"]);
+	return `the action "${name}" is not registered${suggestion(name, known)}`;
 }
 
 function add(menu: Menu) {
@@ -727,17 +720,19 @@ function variantsOf(name: string, condition: string, action: string) {
 }
 
 function makeItem(label: MenuText, placeholder: string, condition: string, action: string, restriction: string, message: string, slot: number) {
-	const item: MenuItem = { label, condition, action, placeholder, restriction, restrictionMessage: message, visible: null, enabled: null, message: null, spaceBefore: 0, spaceAfter: 0, slot };
+	const item: MenuItem = { label, condition, action, placeholder, restriction, restrictionMessage: message, visible: null, enabled: null, message: null, spaceBefore: 0, spaceAfter: 0, slot, variants: null };
 	return item;
 }
 
-/** Whether a menu.ini item name gives an item - e.g. "A|B" gives two variants; "" and "|" give none. */
+/** Whether an item name of a menu file gives an item - e.g. "A|B" gives two variants; "" and "|" give none. */
 export function hasText(name: string) {
 	return pieces(name).length > 0;
 }
 
 /** The item's variants for the player: its text read now, "A|B" split, with the conditions and actions. */
 function variantsFor(item: MenuItem, player: Player, target: number) {
+	const own = item.variants;
+	if (own != null) return own;
 	const variants = variantsOf(textOf(item.label, player, target), item.condition, item.action);
 	if (variants.length == 0) variants.push({ name: "", condition: "", action: pieces(item.action).length > 0 ? pieces(item.action)[0] : "" });
 	return variants;
@@ -750,6 +745,8 @@ function usesCondition(menu: Menu, name: string) {
 	for (const filter of state.filters) lines.push(filter.condition);
 	for (const item of state.items.concat(state.fixed)) {
 		for (const condition of pieces(item.condition)) lines.push(condition);
+		const variants = item.variants;
+		if (variants != null) variants.forEach(variant => lines.push(variant.condition));
 	}
 	return lines.some(line => words(line).some(token => (token.startsWith("!") ? token.slice(1) : token) == name));
 }

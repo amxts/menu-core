@@ -7,6 +7,8 @@ export default antfu(
 	{
 		stylistic: { indent: "tab", quotes: "double", semi: true },
 		markdown: false,
+		// Menu files as a server admin writes them: YAML and JSON(C) of any style.
+		ignores: ["test/fixtures/**"],
 	},
 	{
 		// The tooltips' words: an entry's en and ru are written alike, in

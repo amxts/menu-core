@@ -156,8 +156,8 @@ export default {
 		ru: `Текст рядом с пунктом, пока \`enabled\` его гасит: сам текст, например "(full)", или функция, которая даёт его для игрока.`,
 	},
 	"MenuItemOptions.placeholder": {
-		en: `The text after the item's name, for items of menu.ini and Pawn plugins, placeholders and all, e.g. "%hp%"; in code the item's text is a function instead.`,
-		ru: `Текст после имени пункта — для пунктов menu.ini и Pawn-плагинов, с плейсхолдерами, например "%hp%"; в коде текст пункта — функция.`,
+		en: `The text after the item's name, for items of menu files and Pawn plugins, placeholders and all, e.g. "%hp%"; in code the item's text is a function instead.`,
+		ru: `Текст после имени пункта — для пунктов файлов меню и Pawn-плагинов, с плейсхолдерами, например "%hp%"; в коде текст пункта — функция.`,
 	},
 	"MenuItemOptions.condition": {
 		en: `Condition names from \`addCondition()\` the item is greyed out without; "!NAME" for the opposite; several, space-separated, must all hold.`,
@@ -228,11 +228,11 @@ export default {
 		ru: `Настройки Menu Core: \`menus\` в amxts.config.ts.`,
 	},
 	"MenuCoreOptions.file": {
-		en: `The menu file, from configs/, without ".ini": e.g. "menu" is configs/menu.ini, "myserver/menu" configs/myserver/menu.ini.`,
-		ru: `Файл меню от configs/ без ".ini": например, "menu" — configs/menu.ini, "myserver/menu" — configs/myserver/menu.ini.`,
+		en: `The menu file, from configs/: e.g. "menu" is configs/menu.ini, menu.yaml, menu.yml, menu.json or menu.jsonc - the first that is there; "myserver/menu.yaml" is that file.`,
+		ru: `Файл меню от configs/: например, "menu" — configs/menu.ini, menu.yaml, menu.yml, menu.json или menu.jsonc — первый, который есть; "myserver/menu.yaml" — этот файл.`,
 	},
 	"MenuCoreOptions.fallback": {
-		en: `The file read instead when \`file\` has no menus, e.g. "menu" for configs/menu.ini; "" is none.`,
-		ru: `Файл, который читается вместо \`file\`, если в том нет меню, например "menu" — configs/menu.ini; "" — никакой.`,
+		en: `The file read instead when \`file\` is empty or not there, e.g. "menu" for configs/menu.ini or menu.yaml; "" is none.`,
+		ru: `Файл, который читается вместо \`file\`, если тот пуст или его нет, например "menu" — configs/menu.ini или menu.yaml; "" — никакой.`,
 	},
 };

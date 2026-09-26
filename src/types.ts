@@ -89,7 +89,7 @@ export interface MenuItemOptions {
 	enabled?: (player: Player, target: number) => boolean;
 	/** The text beside the item while `enabled` greys it out: the text, e.g. "(full)", or a function that gives it for the player. */
 	message?: MenuText;
-	/** The text after the item's name, for items of menu.ini and Pawn plugins, placeholders and all, e.g. "%hp%"; in code the item's text is a function instead. */
+	/** The text after the item's name, for items of menu files and Pawn plugins, placeholders and all, e.g. "%hp%"; in code the item's text is a function instead. */
 	placeholder?: string;
 	/** Condition names from `addCondition()` the item is greyed out without; "!NAME" for the opposite; several, space-separated, must all hold. */
 	condition?: string;
@@ -129,9 +129,9 @@ export type MenuEventType = "open" | "close" | "show";
 
 /** Menu Core's options: `menus` in amxts.config.ts. */
 export interface MenuCoreOptions {
-	/** The menu file, from configs/, without ".ini": e.g. "menu" is configs/menu.ini, "myserver/menu" configs/myserver/menu.ini. */
+	/** The menu file, from configs/: e.g. "menu" is configs/menu.ini, menu.yaml, menu.yml, menu.json or menu.jsonc - the first that is there; "myserver/menu.yaml" is that file. */
 	file: string;
-	/** The file read instead when `file` has no menus, e.g. "menu" for configs/menu.ini; "" is none. */
+	/** The file read instead when `file` is empty or not there, e.g. "menu" for configs/menu.ini or menu.yaml; "" is none. */
 	fallback: string;
 }
 

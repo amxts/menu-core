@@ -42,6 +42,67 @@ export interface MenuItem {
 	spaceAfter: number;
 	/** The slot a fixed item takes, from 0; -1 in the flow. */
 	slot: number;
+	/** Variants given one by one (a menu file's `variants`); null when they are read from "A|B" in the text. */
+	variants: Variant[] | null;
+}
+
+/** An item as a menu file describes it, whatever the file's format. */
+export interface ItemSpec {
+	name: string;
+	placeholder: string;
+	condition: string;
+	action: string;
+	restriction: string;
+	message: string;
+	spaceBefore: number;
+	spaceAfter: number;
+	/** The slot of a fixed item, from 0; -1 in the flow. */
+	slot: number;
+	variants: Variant[] | null;
+}
+
+/** A filter of a list menu as a menu file gives it. */
+export interface FilterSpec {
+	condition: string;
+	message: string;
+}
+
+/** What a name in a menu file names: checked once every plugin has had its say. */
+export type NameKind = "condition" | "action" | "restriction" | "placeholder";
+
+/** A name a menu file uses, and where: "configs/menu.yaml:12:9". */
+export interface NameUse {
+	kind: NameKind;
+	name: string;
+	where: string;
+}
+
+/** A menu as a menu file describes it, whatever the file's format. */
+export interface MenuSpec {
+	name: string;
+	title: string;
+	activeOn: string;
+	hideBack: boolean;
+	hideExit: boolean;
+	locked: boolean;
+	sharedTimer: boolean;
+	time: number;
+	onTimeout: string;
+	/** An items menu's items; a list menu's row template, its VIEW. */
+	items: ItemSpec[];
+	fixed: ItemSpec[];
+	filters: FilterSpec[];
+	names: NameUse[];
+}
+
+/** What a menu file holds: its menus, and the words of [MAIN] - "" for those it leaves out. */
+export interface MenuFile {
+	/** The file's path; "" when no file was found. */
+	file: string;
+	/** Whether the file has nothing at all in it: the fallback file is read instead. */
+	empty: boolean;
+	labels: Labels;
+	menus: MenuSpec[];
 }
 
 /** Rows of a list menu that fail it are left out; `message` says so when none is left. */

@@ -3,16 +3,16 @@
 export default {
 	"Menu": {
 		en: `
-			A menu: read from menu.ini, or made with \`create()\`. The fields are what
-			menu.ini sets; the methods fill the menu, open it and count it down.
+			A menu: read from a menu file, or made with \`create()\`. The fields are what
+			the file sets; the methods fill the menu, open it and count it down.
 
 			    const shop = menus.create("SHOP", { title: "Shop" });
 			    shop.addItem("Heal", { onSelect: heal });
 			    shop.show(player);
 		`,
 		ru: `
-			Меню: прочитанное из menu.ini или сделанное через \`create()\`. Поля — то,
-			что задаёт menu.ini; методы наполняют меню, открывают его и ведут отсчёт.
+			Меню: прочитанное из файла меню или сделанное через \`create()\`. Поля — то,
+			что задаёт файл; методы наполняют меню, открывают его и ведут отсчёт.
 
 			    const shop = menus.create("SHOP", { title: "Shop" });
 			    shop.addItem("Heal", { onSelect: heal });
@@ -56,8 +56,8 @@ export default {
 		ru: `Секунды, оставшиеся на общем отсчёте; 0, пока отсчёт не идёт.`,
 	},
 	"Menu.name": {
-		en: `The menu's name - its section in menu.ini, e.g. "MAIN_MENU".`,
-		ru: `Имя меню — его секция в menu.ini, например "MAIN_MENU".`,
+		en: `The menu's name - its name in the menu file, e.g. "MAIN_MENU".`,
+		ru: `Имя меню — его имя в файле меню, например "MAIN_MENU".`,
 	},
 	"Menu.title": {
 		en: `The menu's title: the text - a lang key too - or a function that gives it for the player who looks.`,
@@ -90,8 +90,8 @@ export default {
 		ru: `Фильтр меню-списка: строки, на которые \`test\` отвечает «нет», пропускаются, а если не осталось ни одной, игрок получает \`message\`.`,
 	},
 	"Menu.addPlaceholder": {
-		en: `A placeholder of this menu, for menu.ini and Pawn plugins: the text %name% stands for, before the ones registered with \`addPlaceholder()\`. In code the text is a function instead.`,
-		ru: `Плейсхолдер этого меню — для menu.ini и Pawn-плагинов: текст, которым заменяется %name%, раньше зарегистрированных через \`addPlaceholder()\`. В коде текст — функция.`,
+		en: `A placeholder of this menu, for menu files and Pawn plugins: the text %name% stands for, before the ones registered with \`addPlaceholder()\`. In code the text is a function instead.`,
+		ru: `Плейсхолдер этого меню — для файлов меню и Pawn-плагинов: текст, которым заменяется %name%, раньше зарегистрированных через \`addPlaceholder()\`. В коде текст — функция.`,
 	},
 	"Menu.setListSource": {
 		en: `The source of this list menu's rows, instead of the players.`,
@@ -163,12 +163,14 @@ export default {
 	},
 	"setConfigFile": {
 		en: `
-			Sets the file menus are read from, under configs/ and without ".ini"; read
-			when a menu is first asked for. \`fallback\` is read instead when \`file\` has no sections.
+			Sets the file menus are read from, under configs/: without an extension,
+			the first of .ini, .yaml, .yml, .json and .jsonc that is there. Read when
+			a menu is first asked for; \`fallback\` is read instead when \`file\` is empty.
 		`,
 		ru: `
-			Задаёт файл, из которого читаются меню: путь от configs/ без ".ini"; читается,
-			когда меню понадобится впервые. Если в \`file\` нет секций, читается \`fallback\`.
+			Задаёт файл, из которого читаются меню: путь от configs/; без расширения —
+			первый из .ini, .yaml, .yml, .json и .jsonc, который есть. Читается, когда
+			меню понадобится впервые; если \`file\` пуст, читается \`fallback\`.
 		`,
 	},
 	"find": {
@@ -184,8 +186,8 @@ export default {
 		ru: `Меню с этим номером среди всех — обратное к \`indexOf()\`; null, если такого нет.`,
 	},
 	"register": {
-		en: `The menu of the file's [name] section, read now if it is not yet; null when there is no such section or no items in it.`,
-		ru: `Меню из секции [name] файла, прочитанное сейчас, если ещё не прочитано; null, если секции нет или в ней нет пунктов.`,
+		en: `The menu of that name in the menu file, read now if it is not yet; null when the file has no such menu, or no items in it.`,
+		ru: `Меню с этим именем из файла меню, прочитанное сейчас, если ещё не прочитано; null, если такого меню в файле нет или в нём нет пунктов.`,
 	},
 	"create": {
 		en: `
@@ -198,20 +200,20 @@ export default {
 		`,
 	},
 	"addCondition": {
-		en: `Registers a condition by name, for menu.ini and Pawn plugins; the first one registered under a name is the one asked.`,
-		ru: `Регистрирует условие по имени — для menu.ini и Pawn-плагинов; спрашивается то, что зарегистрировано под именем первым.`,
+		en: `Registers a condition by name, for menu files and Pawn plugins; the first one registered under a name is the one asked.`,
+		ru: `Регистрирует условие по имени — для файлов меню и Pawn-плагинов; спрашивается то, что зарегистрировано под именем первым.`,
 	},
 	"addAction": {
-		en: `Registers an action by name, for menu.ini and Pawn plugins; SHOW_<MENU> and CLOSE_MENU are built in.`,
-		ru: `Регистрирует действие по имени — для menu.ini и Pawn-плагинов; SHOW_<MENU> и CLOSE_MENU встроены.`,
+		en: `Registers an action by name, for menu files and Pawn plugins; SHOW_<MENU> and CLOSE_MENU are built in.`,
+		ru: `Регистрирует действие по имени — для файлов меню и Pawn-плагинов; SHOW_<MENU> и CLOSE_MENU встроены.`,
 	},
 	"addPlaceholder": {
-		en: `Registers a placeholder for menu.ini and Pawn plugins: the text %name% stands for in titles and items. A name registered twice keeps the first. In code the text is a function instead.`,
-		ru: `Регистрирует плейсхолдер для menu.ini и Pawn-плагинов: текст, которым заменяется %name% в заголовках и пунктах. Если имя зарегистрировано дважды, остаётся первое. В коде текст — функция.`,
+		en: `Registers a placeholder for menu files and Pawn plugins: the text %name% stands for in titles and items. A name registered twice keeps the first. In code the text is a function instead.`,
+		ru: `Регистрирует плейсхолдер для файлов меню и Pawn-плагинов: текст, которым заменяется %name% в заголовках и пунктах. Если имя зарегистрировано дважды, остаётся первое. В коде текст — функция.`,
 	},
 	"hasText": {
-		en: `Whether a menu.ini item name gives an item - e.g. "A|B" gives two variants; "" and "|" give none.`,
-		ru: `Даёт ли имя пункта из menu.ini пункт — например, "A|B" даёт два варианта; "" и "|" не дают ни одного.`,
+		en: `Whether an item name of a menu file gives an item - e.g. "A|B" gives two variants; "" and "|" give none.`,
+		ru: `Даёт ли имя пункта из файла меню пункт — например, "A|B" даёт два варианта; "" и "|" не дают ни одного.`,
 	},
 	"addRestriction": {
 		en: `Registers a restriction by name, for items to name; "*" answers for every name nothing else does.`,
