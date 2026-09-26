@@ -6,8 +6,6 @@ import {
 	Access,
 	accessOf,
 	Forward,
-	MenuItemOptions,
-	MenuShowOptions,
 	Player,
 	clearInterval,
 	print,
@@ -18,7 +16,7 @@ import {
 } from "~/facade";
 import { GetLangTransKey, LookupLangKey, get_maxplayers, register_menucmd, register_menuid } from "~/natives";
 import * as ini from "@amxts/universal-config";
-import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, Menu, MenuCoreOptions, MenuEvent, MenuEventType, MenuItem, MenuListener, PlaceholderValue, RestrictionTest, Variant } from "./types";
+import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, Menu, MenuCoreOptions, MenuEvent, MenuEventType, MenuItem, MenuItemOptions, MenuListener, MenuShowOptions, PlaceholderValue, RestrictionTest, Variant } from "./types";
 
 import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, ListenerEntry, Viewer, Listing, Screen, Labels } from "./internal";
 
@@ -173,25 +171,30 @@ export function create(name: string, title: string) {
  * first whose condition holds is shown. False when the name gives none.
  */
 export function addItem(menu: Menu, name: string, options: MenuItemOptions = {}) {
-	const item = makeItem(menu, name, options.placeholder!, options.condition!, actionOf(menu, options), options.restriction!, options.restrictionMessage!, -1);
+	const item = itemOf(menu, name, options, -1);
 	if (item == null) return false;
-	item.spaceBefore = options.spaceBefore!;
-	item.spaceAfter = options.spaceAfter!;
-	const at = options.at!;
-	// splice(at, 0, item) does not insert: AssemblyScript's splice takes two arguments.
-	if (at >= 0 && at < menu.items.length) menu.items = menu.items.slice(0, at).concat([item]).concat(menu.items.slice(at));
+	const at = options.at ?? -1;
+	if (at >= 0 && at < menu.items.length) menu.items.splice(at, 0, item);
 	else menu.items.push(item);
 	return true;
 }
 
 /** An item that always takes slot 1-7 of every page. */
 export function addFixedItem(menu: Menu, slot: number, name: string, options: MenuItemOptions = {}) {
-	const item = makeItem(menu, name, options.placeholder!, options.condition!, actionOf(menu, options), options.restriction!, options.restrictionMessage!, slot - 1);
+	const item = itemOf(menu, name, options, slot - 1);
 	if (item == null) return false;
-	item.spaceBefore = options.spaceBefore!;
-	item.spaceAfter = options.spaceAfter!;
 	menu.fixed.push(item);
 	return true;
+}
+
+/** The item addItem and addFixedItem add: in `slot`, -1 for the flow. */
+function itemOf(menu: Menu, name: string, options: MenuItemOptions, slot: number) {
+	const { placeholder = "", condition = "", restriction = "", restrictionMessage = "", spaceBefore = 0, spaceAfter = 0 } = options;
+	const item = makeItem(menu, name, placeholder, condition, actionOf(menu, options), restriction, restrictionMessage, slot);
+	if (item == null) return null;
+	item.spaceBefore = spaceBefore;
+	item.spaceAfter = spaceAfter;
+	return item;
 }
 
 export function clearItems(menu: Menu) {
@@ -288,7 +291,7 @@ export function textRow(text: string, centered = false) {
 export function show(player: Player, name: string, options: MenuShowOptions = {}) {
 	if (!player.isConnected) return false;
 	const viewer = viewerOf(player.id);
-	viewer.target = options.target!;
+	viewer.target = options.target ?? 0;
 
 	const menu = menuNamed(name);
 	if (menu == null) return false;
@@ -594,7 +597,7 @@ function onMenuKey(id: number, key: number) {
 
 function actionOf(menu: Menu, options: MenuItemOptions) {
 	const handler = options.onSelect;
-	if (handler == null) return options.action!;
+	if (handler == null) return options.action ?? "";
 	selectCount++;
 	const name = `${menu.name}#${selectCount}`;
 	addAction(name, handler);
@@ -709,11 +712,12 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 	let remember = !returning && previous != null && !options.skipHistory && back < 0;
 	if (remember && previous != null && previous.name.toUpperCase().includes("CONFIRM")) remember = false;
 
-	if (options.time! != -1) stopPlayerTimer(viewer);
+	// Left out, or -1: the countdown running goes on, or the menu's own starts.
+	const asked = options.time ?? -1;
+	if (asked != -1) stopPlayerTimer(viewer);
 	dispatch("open", player, menu.name, false);
 	if (!returning) viewer.locked = menu.locked;
 
-	const asked = options.time!;
 	let timer = asked == -1 ? 0 : asked;
 	if (asked == -1) timer = menu.countdown > 0 ? menu.countdown : viewer.timer;
 	if (timer <= 0) timer = menu.time;
