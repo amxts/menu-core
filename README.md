@@ -2,7 +2,7 @@
 
 # Menu Core
 
-*An opinionated way to create menus for Counter-Strike 1.6 servers*
+*An opinionated way to create menus*
 
 [![amxts module](https://img.shields.io/badge/amxts-module-3178c6?style=flat-square)](https://amxts.github.io/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
@@ -13,7 +13,7 @@
 
 </div>
 
-Describe a menu once, in an ini file or in code, and Menu Core handles the rest: pages, keys, the way back, countdowns, and items that appear, disappear or grey out depending on who is looking. It is an [amxts](https://amxts.github.io/) module written in TypeScript, and it also serves the original `menu_core.amxx` natives, so existing Pawn plugins keep working.
+Describe a menu once, in an ini file or in code, and Menu Core handles the rest: pages, keys, the way back, countdowns, and items that appear, disappear or grey out depending on who is looking.
 
 > [!WARNING]
 > **In progress.** Menu Core has been tried in game only a few times, and its API may still change.
@@ -22,7 +22,7 @@ Describe a menu once, in an ini file or in code, and Menu Core handles the rest:
 
 - **Menus from a file or from code.** Admins edit `menu.ini` without touching a plugin; plugins add their own items at run time.
 - **Conditions and restrictions.** Show an item only when it applies (`IS_ALIVE`, `!IS_SPECTATOR`), or grey it out with a reason (`ADMIN`, `FLAG_abc`).
-- **Placeholders.** `%hp%`, `%name%`, `%time%` and any value you register are filled in each time the menu is drawn.
+- **Text that follows the player.** A title, an item or a message can be a function — ``(player) => `Heal (${player.health} HP)` `` — read each time the menu is drawn; in `menu.ini`, `%hp%`-style placeholders do the same.
 - **List menus.** A row per player or per item of your own list, with filters and a message when nothing is left.
 - **Variants.** `SPECTATE|JOIN` shows whichever variant's condition holds.
 - **Countdowns and locks.** Timed menus, one timer per player or one for everyone, and menus that cannot be closed or replaced.
@@ -60,10 +60,9 @@ Menu Core reads its menus through [Config Core](https://github.com/amxts/config-
 import { server } from "@amxts/core";
 import * as menus from "@amxts/menu-core";
 
-const shop = menus.create("SHOP", { title: "Shop" });
-shop.addPlaceholder("hp", (player) => `${player.health}`);
+const shop = menus.create("SHOP", { title: (player) => `Shop for ${player.name}` });
 
-shop.addItem("Heal (%hp% HP)", {
+shop.addItem((player) => `Heal (${player.health} HP)`, {
 	visible: (player) => player.health < 100,
 	onSelect: (player) => {
 		player.health = 100;
@@ -81,6 +80,8 @@ server.addCommand("/shop", (player) => {
 });
 ```
 
+Text — a title, an item, a message — is the text itself or a function that gives it for the player who looks. A plain string that is a lang key is translated for him.
+
 Keys: **1–7** choose, **8** is the next page, **9** the previous page or back to the menu this one was opened from, **0** closes.
 
 Text colours are written as tags: `!y` yellow, `!r` red, `!w` white, `!d` grey, `!R` aligns right.
@@ -91,9 +92,8 @@ A menu is an object: `menus.create()` makes one, and its methods fill and open i
 
 | Method | What it does |
 | --- | --- |
-| `menu.addItem(text, options?)` | Adds an item. Options: `onSelect`, `visible` (left out while it says no), `enabled` (greyed out while it says no) with `message`, `at`, `spaceBefore`, `spaceAfter` — and the menu.ini names `condition`, `action`, `restriction`, `restrictionMessage`, `placeholder`. |
+| `menu.addItem(text, options?)` | Adds an item: its text, or `(player, target) => text` — `target` is the row's in a list menu. Options: `onSelect`, `visible` (left out while it says no), `enabled` (greyed out while it says no) with `message`, `at`, `spaceBefore`, `spaceAfter` — and the menu.ini names `condition`, `action`, `restriction`, `restrictionMessage`, `placeholder`. |
 | `menu.addFixedItem(slot, text, options?)` | An item that keeps slot 1–7 on every page. |
-| `menu.addPlaceholder(name, value)` | What `%name%` becomes in this menu. |
 | `menu.addFilter(test, message?)` | A list menu leaves out the rows `test` says no to. |
 | `menu.setListSource(rows)` | A list menu's own rows: `listRow(target, text)`, `textRow(text)`. |
 | `menu.addEventListener("open" \| "close" \| "show", listener)` | This menu's events; `"show"` comes before it opens, `event.preventDefault()` stops it. |
@@ -105,10 +105,10 @@ Its fields — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` 
 
 | Function | What it does |
 | --- | --- |
-| `create(name, options?)` | A menu in code, or the existing one with that name. A name starting with `LIST_` makes a list menu. Options: `title`, `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
+| `create(name, options?)` | A menu in code, or the existing one with that name. A name starting with `LIST_` makes a list menu. Options: `title` (text or a function), `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
 | `find(name)` · `register(name)` | A menu by its name; `register` reads it from the file ahead of time. |
 | `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | The player's menu, whichever it is. |
-| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | What menu.ini and Pawn plugins name, answered by functions. |
+| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | What menu.ini and Pawn plugins name, answered by functions — `%name%` in their text is a placeholder. `menu.addPlaceholder(name, value)` gives one to a single menu. |
 | `setListSource(name, rows)` · `refresh("A B")` · `conditionChanged(name)` · `addEventListener(type, listener)` | The same for menus by name, and every menu's events. |
 
 ## Menus in a file

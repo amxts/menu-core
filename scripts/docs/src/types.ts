@@ -5,6 +5,22 @@ export default {
 		en: `A menu's kind, one of "items" (a list of items) or "list" (a row per player, or per row of a list source).`,
 		ru: `Вид меню, одно из "items" (список пунктов) или "list" (строка на игрока или на строку источника).`,
 	},
+	"MenuText": {
+		en: `
+			Text of a menu - a title, an item, a message: the text itself, or a
+			function that gives it for the player who looks; \`target\` is the row's
+			in a list menu, else the menu's. A lang key is translated either way.
+
+			    menus.create("SHOP", { title: (player) => \`Shop for \${player.name}\` });
+		`,
+		ru: `
+			Текст меню — заголовок, пункт, сообщение: сам текст или функция, которая
+			даёт его для игрока, который смотрит; \`target\` — цель строки в
+			меню-списке, иначе меню. Ключ словаря переводится в обоих случаях.
+
+			    menus.create("SHOP", { title: (player) => \`Shop for \${player.name}\` });
+		`,
+	},
 	"ListRow": {
 		en: `A row of a list menu, as a list source gives it - made with \`listRow()\` or \`textRow()\`.`,
 		ru: `Строка меню-списка, как её отдаёт источник, — из \`listRow()\` или \`textRow()\`.`,
@@ -46,8 +62,8 @@ export default {
 		`,
 	},
 	"MenuOptions.title": {
-		en: `The menu's title: a lang key or the text itself; left out, the menu's name.`,
-		ru: `Заголовок меню: ключ словаря или сам текст; если не задан — имя меню.`,
+		en: `The menu's title: the text - a lang key too - or a function that gives it for the player; left out, the menu's name.`,
+		ru: `Заголовок меню: сам текст — или ключ словаря — либо функция, которая даёт его для игрока; если не задан — имя меню.`,
 	},
 	"MenuOptions.time": {
 		en: `Seconds on the countdown when the menu opens, e.g. 10; left out, none.`,
@@ -132,12 +148,12 @@ export default {
 		ru: `Проверка, при которой пункт можно выбрать: пока она отвечает «нет», пункт погашен.`,
 	},
 	"MenuItemOptions.message": {
-		en: `The text beside the item while \`enabled\` greys it out, e.g. "(full)".`,
-		ru: `Текст рядом с пунктом, пока \`enabled\` его гасит, например "(full)".`,
+		en: `The text beside the item while \`enabled\` greys it out: the text, e.g. "(full)", or a function that gives it for the player.`,
+		ru: `Текст рядом с пунктом, пока \`enabled\` его гасит: сам текст, например "(full)", или функция, которая даёт его для игрока.`,
 	},
 	"MenuItemOptions.placeholder": {
-		en: `The text after the item's name, placeholders and all, e.g. "%hp%".`,
-		ru: `Текст после имени пункта, с плейсхолдерами, например "%hp%".`,
+		en: `The text after the item's name, for items of menu.ini and Pawn plugins, placeholders and all, e.g. "%hp%"; in code the item's text is a function instead.`,
+		ru: `Текст после имени пункта — для пунктов menu.ini и Pawn-плагинов, с плейсхолдерами, например "%hp%"; в коде текст пункта — функция.`,
 	},
 	"MenuItemOptions.condition": {
 		en: `Condition names from \`addCondition()\` the item is greyed out without; "!NAME" for the opposite; several, space-separated, must all hold.`,

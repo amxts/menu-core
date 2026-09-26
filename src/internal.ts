@@ -3,7 +3,7 @@
  * menu being drawn. Not part of the API.
  */
 import { Player } from "@amxts/core";
-import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, PlaceholderValue, RestrictionTest, RowTest } from "./types";
+import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuText, PlaceholderValue, RestrictionTest, RowTest } from "./types";
 
 /** Whether an item is shown, or can be chosen: `player` looks, `target` is the row's or the menu's. */
 export type ItemTest = (player: Player, target: number) => boolean;
@@ -20,7 +20,12 @@ export interface Variant {
 }
 
 export interface MenuItem {
-	variants: Variant[];
+	/** Its text; "A|B" in it are variants (menu.ini, Pawn plugins). */
+	label: MenuText;
+	/** Condition names, "C1|C2" a variant each; "" is always. */
+	condition: string;
+	/** Action names, "X|Y" a variant each. */
+	action: string;
 	/** Text after the name: "%hp%". */
 	placeholder: string;
 	/** Restriction names, space-separated. */
@@ -32,7 +37,7 @@ export interface MenuItem {
 	/** Greyed out while it says no. */
 	enabled: ItemTest | null;
 	/** Beside the item while `enabled` greys it out. */
-	message: string;
+	message: MenuText | null;
 	spaceBefore: number;
 	spaceAfter: number;
 	/** The slot a fixed item takes, from 0; -1 in the flow. */
@@ -68,6 +73,15 @@ export function stateOf(name: string) {
 	}
 
 	return states.get(name);
+}
+
+/**
+ * The text a MenuText gives the player: a string given for it is already a
+ * function returning it, as the compiler holds this type.
+ */
+export function textOf(value: MenuText, player: Player, target: number) {
+	// @ts-ignore: a function here - see MenuText
+	return value(player, target);
 }
 
 /** A list menu's filter by condition names - menu.ini's FILTER, a Pawn plugin's MP_FILTER. */

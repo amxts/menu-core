@@ -340,7 +340,8 @@ function addFilter(menu: menus.Menu, value: string) {
 export function mc_add_menu_item(section: string, name: string, placeholder?: string, condition?: string, action?: string, restriction?: string, restrictMsg?: string, iPosition = -1, emptyBefore = 0, emptyAfter = 0) {
 	const menu = menus.find(section);
 	if (menu == null) return 0;
-	return answer(menu.addItem(name, {
+	if (!menus.hasText(name)) return 0;
+	menu.addItem(name, {
 		placeholder,
 		condition,
 		action,
@@ -349,7 +350,8 @@ export function mc_add_menu_item(section: string, name: string, placeholder?: st
 		at: iPosition,
 		spaceBefore: emptyBefore,
 		spaceAfter: emptyAfter,
-	}));
+	});
+	return 1;
 }
 
 /**
@@ -359,14 +361,16 @@ export function mc_add_menu_item(section: string, name: string, placeholder?: st
 export function mc_add_fixed_menu_item(section: string, slot: number, name: string, placeholder?: string, action?: string, condition?: string, restriction?: string, emptyBefore = 0, emptyAfter = 0) {
 	const menu = menus.find(section);
 	if (menu == null) return 0;
-	return answer(menu.addFixedItem(slot, name, {
+	if (!menus.hasText(name)) return 0;
+	menu.addFixedItem(slot, name, {
 		placeholder,
 		action,
 		condition,
 		restriction,
 		spaceBefore: emptyBefore,
 		spaceAfter: emptyAfter,
-	}));
+	});
+	return 1;
 }
 
 /**

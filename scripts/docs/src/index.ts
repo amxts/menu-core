@@ -60,22 +60,26 @@ export default {
 		ru: `Имя меню — его секция в menu.ini, например "MAIN_MENU".`,
 	},
 	"Menu.title": {
-		en: `The menu's title: a lang key or the text itself.`,
-		ru: `Заголовок меню: ключ словаря или сам текст.`,
+		en: `The menu's title: the text - a lang key too - or a function that gives it for the player who looks.`,
+		ru: `Заголовок меню: сам текст — или ключ словаря — либо функция, которая даёт его для игрока, который смотрит.`,
 	},
 	"Menu.addItem": {
 		en: `
-			Adds an item. "A|B" in the text, a condition or an action are variants:
-			the first whose condition holds is shown. False when the text gives none.
+			Adds an item: its text, or a function that gives it for the player -
+			\`target\` is the row's in a list menu, else the menu's.
+
+			    shop.addItem((player) => \`Heal (\${player.health} HP)\`, { onSelect: heal });
 		`,
 		ru: `
-			Добавляет пункт. "A|B" в тексте, условии или действии — варианты:
-			показывается первый, чьё условие выполнено. False, если текст не даёт ни одного.
+			Добавляет пункт: его текст или функцию, которая даёт текст для игрока, —
+			\`target\` — цель строки в меню-списке, иначе меню.
+
+			    shop.addItem((player) => \`Heal (\${player.health} HP)\`, { onSelect: heal });
 		`,
 	},
 	"Menu.addFixedItem": {
-		en: `Adds an item that takes the same slot on every page: \`slot\` is its key, 1 to 7.`,
-		ru: `Добавляет пункт, который на каждой странице занимает один слот: \`slot\` — его клавиша, от 1 до 7.`,
+		en: `Adds an item that takes the same slot on every page: \`slot\` is its key, 1 to 7; the text as \`addItem()\` takes it.`,
+		ru: `Добавляет пункт, который на каждой странице занимает один слот: \`slot\` — его клавиша, от 1 до 7; текст — как у \`addItem()\`.`,
 	},
 	"Menu.clearItems": {
 		en: `Removes every item of the menu, fixed ones too.`,
@@ -86,8 +90,8 @@ export default {
 		ru: `Фильтр меню-списка: строки, на которые \`test\` отвечает «нет», пропускаются, а если не осталось ни одной, игрок получает \`message\`.`,
 	},
 	"Menu.addPlaceholder": {
-		en: `A placeholder of this menu: the text %name% stands for, before the ones registered with \`addPlaceholder()\`.`,
-		ru: `Плейсхолдер этого меню: текст, которым заменяется %name%, раньше зарегистрированных через \`addPlaceholder()\`.`,
+		en: `A placeholder of this menu, for menu.ini and Pawn plugins: the text %name% stands for, before the ones registered with \`addPlaceholder()\`. In code the text is a function instead.`,
+		ru: `Плейсхолдер этого меню — для menu.ini и Pawn-плагинов: текст, которым заменяется %name%, раньше зарегистрированных через \`addPlaceholder()\`. В коде текст — функция.`,
 	},
 	"Menu.setListSource": {
 		en: `The source of this list menu's rows, instead of the players.`,
@@ -202,8 +206,12 @@ export default {
 		ru: `Регистрирует действие по имени — для menu.ini и Pawn-плагинов; SHOW_<MENU> и CLOSE_MENU встроены.`,
 	},
 	"addPlaceholder": {
-		en: `Registers a placeholder: the text %name% stands for in titles and items. A name registered twice keeps the first.`,
-		ru: `Регистрирует плейсхолдер: текст, которым заменяется %name% в заголовках и пунктах. Если имя зарегистрировано дважды, остаётся первое.`,
+		en: `Registers a placeholder for menu.ini and Pawn plugins: the text %name% stands for in titles and items. A name registered twice keeps the first. In code the text is a function instead.`,
+		ru: `Регистрирует плейсхолдер для menu.ini и Pawn-плагинов: текст, которым заменяется %name% в заголовках и пунктах. Если имя зарегистрировано дважды, остаётся первое. В коде текст — функция.`,
+	},
+	"hasText": {
+		en: `Whether a menu.ini item name gives an item - e.g. "A|B" gives two variants; "" and "|" give none.`,
+		ru: `Даёт ли имя пункта из menu.ini пункт — например, "A|B" даёт два варианта; "" и "|" не дают ни одного.`,
 	},
 	"addRestriction": {
 		en: `Registers a restriction by name, for items to name; "*" answers for every name nothing else does.`,

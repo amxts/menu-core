@@ -2,7 +2,7 @@
 
 # Menu Core
 
-*Удобный способ создавать меню для серверов Counter-Strike 1.6*
+*Удобный способ создавать меню*
 
 [![amxts module](https://img.shields.io/badge/amxts-module-3178c6?style=flat-square)](https://amxts.github.io/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
@@ -13,7 +13,7 @@
 
 </div>
 
-Опишите меню один раз — в ini-файле или в коде, — а остальное Menu Core сделает сам: страницы, клавиши, возврат назад, обратный отсчёт и пункты, которые появляются, скрываются или становятся серыми в зависимости от того, кто смотрит. Это модуль [amxts](https://amxts.github.io/), написанный на TypeScript. Он же отдаёт нативы оригинального `menu_core.amxx`, так что существующие Pawn-плагины продолжают работать.
+Опишите меню один раз — в ini-файле или в коде, — а остальное Menu Core сделает сам: страницы, клавиши, возврат назад, обратный отсчёт и пункты, которые появляются, скрываются или становятся серыми в зависимости от того, кто смотрит.
 
 > [!WARNING]
 > **В работе.** В игре Menu Core пробовали всего несколько раз, и API ещё может измениться.
@@ -22,7 +22,7 @@
 
 - **Меню из файла или из кода.** Админ правит `menu.ini`, не трогая плагин; плагины добавляют свои пункты на ходу.
 - **Условия и ограничения.** Пункт показывается, только когда он уместен (`IS_ALIVE`, `!IS_SPECTATOR`), или становится серым с причиной (`ADMIN`, `FLAG_abc`).
-- **Подстановки.** `%hp%`, `%name%`, `%time%` и любые свои значения подставляются при каждой отрисовке.
+- **Текст, который зависит от игрока.** Заголовок, пункт или сообщение могут быть функцией — ``(player) => `Лечение (${player.health} HP)` `` — она читается при каждой отрисовке; в `menu.ini` то же делают плейсхолдеры вроде `%hp%`.
 - **Меню-списки.** Строка на каждого игрока или на каждый элемент своего списка, с фильтрами и сообщением, если никого не осталось.
 - **Варианты.** `SPECTATE|JOIN` показывает тот вариант, чьё условие выполняется.
 - **Отсчёт и блокировка.** Меню с таймером — свой у каждого игрока или один на всех — и меню, которое нельзя закрыть или заменить.
@@ -60,10 +60,9 @@ Menu Core читает меню через [Config Core](https://github.com/amxt
 import { server } from "@amxts/core";
 import * as menus from "@amxts/menu-core";
 
-const shop = menus.create("SHOP", { title: "Магазин" });
-shop.addPlaceholder("hp", (player) => `${player.health}`);
+const shop = menus.create("SHOP", { title: (player) => `Магазин для ${player.name}` });
 
-shop.addItem("Лечение (%hp% HP)", {
+shop.addItem((player) => `Лечение (${player.health} HP)`, {
 	visible: (player) => player.health < 100,
 	onSelect: (player) => {
 		player.health = 100;
@@ -81,6 +80,8 @@ server.addCommand("/shop", (player) => {
 });
 ```
 
+Текст — заголовок, пункт, сообщение — это сам текст или функция, которая даёт его для игрока, который смотрит. Обычная строка, если это ключ словаря, переводится для него.
+
 Клавиши: **1–7** выбирают, **8** — следующая страница, **9** — предыдущая страница или назад, в меню, из которого открыли это, **0** закрывает.
 
 Цвета в тексте пишутся метками: `!y` жёлтый, `!r` красный, `!w` белый, `!d` серый, `!R` выравнивание вправо.
@@ -91,9 +92,8 @@ server.addCommand("/shop", (player) => {
 
 | Метод | Что делает |
 | --- | --- |
-| `menu.addItem(text, options?)` | Добавляет пункт. Опции: `onSelect`, `visible` (пункта нет, пока отвечает «нет»), `enabled` (пункт серый, пока отвечает «нет») с `message`, `at`, `spaceBefore`, `spaceAfter` — и имена из menu.ini `condition`, `action`, `restriction`, `restrictionMessage`, `placeholder`. |
+| `menu.addItem(text, options?)` | Добавляет пункт: его текст или `(player, target) => текст` — `target` — цель строки в меню-списке. Опции: `onSelect`, `visible` (пункта нет, пока отвечает «нет»), `enabled` (пункт серый, пока отвечает «нет») с `message`, `at`, `spaceBefore`, `spaceAfter` — и имена из menu.ini `condition`, `action`, `restriction`, `restrictionMessage`, `placeholder`. |
 | `menu.addFixedItem(slot, text, options?)` | Пункт, который на каждой странице занимает слот 1–7. |
-| `menu.addPlaceholder(name, value)` | Во что превращается `%name%` в этом меню. |
 | `menu.addFilter(test, message?)` | Меню-список пропускает строки, на которые `test` отвечает «нет». |
 | `menu.setListSource(rows)` | Свои строки меню-списка: `listRow(target, text)`, `textRow(text)`. |
 | `menu.addEventListener("open" \| "close" \| "show", listener)` | События этого меню; `"show"` приходит до открытия, `event.preventDefault()` его отменяет. |
@@ -105,10 +105,10 @@ server.addCommand("/shop", (player) => {
 
 | Функция | Что делает |
 | --- | --- |
-| `create(name, options?)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. Опции: `title`, `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
+| `create(name, options?)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. Опции: `title` (текст или функция), `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
 | `find(name)` · `register(name)` | Меню по имени; `register` заранее читает его из файла. |
 | `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | Меню игрока, какое бы оно ни было. |
-| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | То, что называют menu.ini и Pawn-плагины, — ответы функциями. |
+| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | То, что называют menu.ini и Pawn-плагины, — ответы функциями; `%name%` в их тексте — плейсхолдер. `menu.addPlaceholder(name, value)` задаёт его одному меню. |
 | `setListSource(name, rows)` · `refresh("A B")` · `conditionChanged(name)` · `addEventListener(type, listener)` | То же для меню по имени и события всех меню. |
 
 ## Меню в файле

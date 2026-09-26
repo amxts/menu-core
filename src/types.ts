@@ -7,6 +7,15 @@ import { Player } from "@amxts/core";
 /** A menu's kind, one of "items" (a list of items) or "list" (a row per player, or per row of a list source). */
 export type MenuKind = "items" | "list";
 
+/**
+ * Text of a menu - a title, an item, a message: the text itself, or a
+ * function that gives it for the player who looks; `target` is the row's
+ * in a list menu, else the menu's. A lang key is translated either way.
+ *
+ *     menus.create("SHOP", { title: (player) => `Shop for ${player.name}` });
+ */
+export type MenuText = string | ((player: Player, target: number) => string);
+
 /** A row of a list menu, as a list source gives it - made with `listRow()` or `textRow()`. */
 export interface ListRow {
 	/** The row's kind, one of "item" (a row to choose) or "text" (a line of text, not a choice). */
@@ -29,8 +38,8 @@ export interface ListRow {
  *     menus.create("SHOP", { title: "Shop", time: 30, activeWhen: player => player.isAlive });
  */
 export interface MenuOptions {
-	/** The menu's title: a lang key or the text itself; left out, the menu's name. */
-	title?: string;
+	/** The menu's title: the text - a lang key too - or a function that gives it for the player; left out, the menu's name. */
+	title?: MenuText;
 	/** Seconds on the countdown when the menu opens, e.g. 10; left out, none. */
 	time?: number;
 	/** Hiding of the "Back" button: true leaves it out. */
@@ -76,9 +85,9 @@ export interface MenuItemOptions {
 	visible?: (player: Player, target: number) => boolean;
 	/** A test the item can be chosen under: while it says no, the item is greyed out. */
 	enabled?: (player: Player, target: number) => boolean;
-	/** The text beside the item while `enabled` greys it out, e.g. "(full)". */
-	message?: string;
-	/** The text after the item's name, placeholders and all, e.g. "%hp%". */
+	/** The text beside the item while `enabled` greys it out: the text, e.g. "(full)", or a function that gives it for the player. */
+	message?: MenuText;
+	/** The text after the item's name, for items of menu.ini and Pawn plugins, placeholders and all, e.g. "%hp%"; in code the item's text is a function instead. */
 	placeholder?: string;
 	/** Condition names from `addCondition()` the item is greyed out without; "!NAME" for the opposite; several, space-separated, must all hold. */
 	condition?: string;

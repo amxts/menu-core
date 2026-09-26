@@ -6,9 +6,9 @@ import { Access, accessOf, Forward, Player, clearInterval, print, server, setInt
 import { publicFor, showMenu } from "@amxts/core/kit";
 import { GetLangTransKey, LookupLangKey, get_maxplayers, register_menucmd, register_menuid } from "~/natives";
 import * as ini from "@amxts/config-core";
-import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuCoreOptions, MenuEventType, MenuItemOptions, MenuKind, MenuOptions, MenuShowOptions, PlaceholderValue, RestrictionTest, RowTest } from "./types";
+import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuCoreOptions, MenuEventType, MenuItemOptions, MenuKind, MenuOptions, MenuShowOptions, MenuText, PlaceholderValue, RestrictionTest, RowTest } from "./types";
 
-import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, Screen, Labels, MenuItem, Variant, addNamedFilter, stateOf } from "./internal";
+import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, Screen, Labels, MenuItem, Variant, addNamedFilter, stateOf, textOf } from "./internal";
 
 export * from "./types";
 
@@ -52,32 +52,30 @@ export class Menu {
 	constructor(
 		/** The menu's name - its section in menu.ini, e.g. "MAIN_MENU". */
 		readonly name: string,
-		/** The menu's title: a lang key or the text itself. */
-		public title: string,
+		/** The menu's title: the text - a lang key too - or a function that gives it for the player who looks. */
+		public title: MenuText,
 	) {
 		this.kind = name.startsWith("LIST_") ? "list" : "items";
 	}
 
 	/**
-	 * Adds an item. "A|B" in the text, a condition or an action are variants:
-	 * the first whose condition holds is shown. False when the text gives none.
+	 * Adds an item: its text, or a function that gives it for the player -
+	 * `target` is the row's in a list menu, else the menu's.
+	 *
+	 *     shop.addItem((player) => `Heal (${player.health} HP)`, { onSelect: heal });
 	 */
-	addItem(text: string, options: MenuItemOptions = {}) {
+	addItem(text: MenuText, options: MenuItemOptions = {}) {
 		const item = itemOf(this, text, options, -1);
-		if (item == null) return false;
 		const items = stateOf(this.name).items;
 		const at = options.at ?? -1;
 		if (at >= 0 && at < items.length) items.splice(at, 0, item);
 		else items.push(item);
-		return true;
 	}
 
-	/** Adds an item that takes the same slot on every page: `slot` is its key, 1 to 7. */
-	addFixedItem(slot: number, text: string, options: MenuItemOptions = {}) {
+	/** Adds an item that takes the same slot on every page: `slot` is its key, 1 to 7; the text as `addItem()` takes it. */
+	addFixedItem(slot: number, text: MenuText, options: MenuItemOptions = {}) {
 		const item = itemOf(this, text, options, slot - 1);
-		if (item == null) return false;
 		stateOf(this.name).fixed.push(item);
-		return true;
 	}
 
 	/** Removes every item of the menu, fixed ones too. */
@@ -92,7 +90,7 @@ export class Menu {
 		stateOf(this.name).filters.push({ condition: "", test, message: message ?? "" });
 	}
 
-	/** A placeholder of this menu: the text %name% stands for, before the ones registered with `addPlaceholder()`. */
+	/** A placeholder of this menu, for menu.ini and Pawn plugins: the text %name% stands for, before the ones registered with `addPlaceholder()`. In code the text is a function instead. */
 	addPlaceholder(name: string, value: PlaceholderValue) {
 		stateOf(this.name).placeholders.push({ name, value });
 	}
@@ -325,7 +323,9 @@ export function create(name: string, options: MenuOptions = {}) {
 	const known = find(name);
 	if (known != null) return known;
 
-	const menu = new Menu(name, options.title ?? name);
+	const menu = new Menu(name, name);
+	const title = options.title;
+	if (title != null) menu.title = title;
 	menu.time = options.time ?? 0;
 	menu.hideBack = options.hideBack ?? false;
 	menu.hideExit = options.hideExit ?? false;
@@ -336,15 +336,15 @@ export function create(name: string, options: MenuOptions = {}) {
 }
 
 /** The item addItem and addFixedItem add: in `slot`, -1 for the flow. */
-function itemOf(menu: Menu, text: string, options: MenuItemOptions, slot: number) {
-	const { placeholder = "", condition = "", restriction = "", restrictionMessage = "", message = "", spaceBefore = 0, spaceAfter = 0 } = options;
+function itemOf(menu: Menu, text: MenuText, options: MenuItemOptions, slot: number) {
+	const { placeholder = "", condition = "", restriction = "", restrictionMessage = "", spaceBefore = 0, spaceAfter = 0 } = options;
 	const item = makeItem(text, placeholder, condition, actionOf(menu, options), restriction, restrictionMessage, slot);
-	if (item == null) return null;
 	const visible = options.visible;
 	const enabled = options.enabled;
+	const message = options.message;
 	if (visible != null) item.visible = visible;
 	if (enabled != null) item.enabled = enabled;
-	item.message = message;
+	if (message != null) item.message = message;
 	item.spaceBefore = spaceBefore;
 	item.spaceAfter = spaceAfter;
 	return item;
@@ -362,7 +362,7 @@ export function addAction(name: string, run: ActionHandler) {
 	return actions.length - 1;
 }
 
-/** Registers a placeholder: the text %name% stands for in titles and items. A name registered twice keeps the first. */
+/** Registers a placeholder for menu.ini and Pawn plugins: the text %name% stands for in titles and items. A name registered twice keeps the first. In code the text is a function instead. */
 export function addPlaceholder(name: string, value: PlaceholderValue) {
 	const known = placeholders.findIndex(entry => entry.name == name);
 	if (known >= 0) return known;
@@ -622,8 +622,8 @@ function column(row: string[], index: number) {
 /** ITEMS: name, placeholder, condition, action, restriction, message, spacing. */
 function readRows(menu: Menu, section: ini.Section, key: string) {
 	for (const row of blockRows(section, key)) {
+		if (!hasText(column(row, 0))) continue;
 		const item = makeItem(column(row, 0), column(row, 1), column(row, 2), column(row, 3), column(row, 4), column(row, 5), -1);
-		if (item == null) continue;
 		setSpacing(item, column(row, 6));
 		stateOf(menu.name).items.push(item);
 	}
@@ -636,15 +636,16 @@ function readList(menu: Menu, section: ini.Section) {
 	const views = blockRows(section, "VIEW");
 	if (views.length == 0) return;
 	const view = views[0];
+	if (!hasText(column(view, 0))) return;
 	const item = makeItem(column(view, 0), "", column(view, 1), column(view, 2), column(view, 3), column(view, 4), -1);
-	if (item != null) stateOf(menu.name).items.push(item);
+	stateOf(menu.name).items.push(item);
 }
 
 /** FIXED_ITEMS: slot, name, placeholder, condition, action, restriction, message, spacing. */
 function readFixed(menu: Menu, section: ini.Section) {
 	for (const row of blockRows(section, "FIXED_ITEMS")) {
+		if (!hasText(column(row, 1))) continue;
 		const item = makeItem(column(row, 1), column(row, 2), column(row, 3), column(row, 4), column(row, 5), column(row, 6), toInt(column(row, 0)) - 1);
-		if (item == null) continue;
 		setSpacing(item, column(row, 7));
 		stateOf(menu.name).fixed.push(item);
 	}
@@ -725,11 +726,21 @@ function variantsOf(name: string, condition: string, action: string) {
 	return variants;
 }
 
-function makeItem(name: string, placeholder: string, condition: string, action: string, restriction: string, message: string, slot: number) {
-	const variants = variantsOf(name, condition, action);
-	if (variants.length == 0) return null;
-	const item: MenuItem = { variants, placeholder, restriction, restrictionMessage: message, visible: null, enabled: null, message: "", spaceBefore: 0, spaceAfter: 0, slot };
+function makeItem(label: MenuText, placeholder: string, condition: string, action: string, restriction: string, message: string, slot: number) {
+	const item: MenuItem = { label, condition, action, placeholder, restriction, restrictionMessage: message, visible: null, enabled: null, message: null, spaceBefore: 0, spaceAfter: 0, slot };
 	return item;
+}
+
+/** Whether a menu.ini item name gives an item - e.g. "A|B" gives two variants; "" and "|" give none. */
+export function hasText(name: string) {
+	return pieces(name).length > 0;
+}
+
+/** The item's variants for the player: its text read now, "A|B" split, with the conditions and actions. */
+function variantsFor(item: MenuItem, player: Player, target: number) {
+	const variants = variantsOf(textOf(item.label, player, target), item.condition, item.action);
+	if (variants.length == 0) variants.push({ name: "", condition: "", action: pieces(item.action).length > 0 ? pieces(item.action)[0] : "" });
+	return variants;
 }
 
 /** Whether a condition line of the menu - ACTIVE_ON, a filter, an item's - names `name`. */
@@ -738,7 +749,7 @@ function usesCondition(menu: Menu, name: string) {
 	const lines = [menu.activeOn];
 	for (const filter of state.filters) lines.push(filter.condition);
 	for (const item of state.items.concat(state.fixed)) {
-		for (const variant of item.variants) lines.push(variant.condition);
+		for (const condition of pieces(item.condition)) lines.push(condition);
 	}
 	return lines.some(line => words(line).some(token => (token.startsWith("!") ? token.slice(1) : token) == name));
 }
@@ -894,7 +905,8 @@ function startCountdown(viewer: Viewer, id: number, menu: Menu, timer: number, a
 }
 
 function header(id: number, viewer: Viewer, menu: Menu, timer: number, page: number, pages: number) {
-	const title = translate(id, menu.title);
+	const player = new Player(id);
+	const title = translate(id, textOf(menu.title, player, viewer.target));
 	const timed = title.includes("%time%") || title.includes("%TIME%");
 	let text = fill(id, viewer.target, title, "", menu);
 	if (pages > 1) text += ` ${numbered(ui(id, labels.page, DEFAULTS.page), [page + 1, pages])}`;
@@ -937,9 +949,9 @@ function fixedAt(menu: Menu, slot: number) {
 	return stateOf(menu.name).fixed.find(item => item.slot == slot);
 }
 
-/** The first variant whose condition holds; -1 when none does. */
-function variantFor(item: MenuItem, player: number, viewer: number) {
-	return item.variants.findIndex(variant => variant.condition.length == 0 || check(player, viewer, variant.condition, false));
+/** The first of the variants whose condition holds; -1 when none does. */
+function variantFor(variants: Variant[], player: number, viewer: number) {
+	return variants.findIndex(variant => variant.condition.length == 0 || check(player, viewer, variant.condition, false));
 }
 
 /** NOT_ENABLED when the item's own `enabled` says no; "" otherwise. */
@@ -953,8 +965,9 @@ function drawItem(screen: Screen, player: Player, viewer: Viewer, menu: Menu, it
 	const id = player.id;
 	screen.text += "\n".repeat(item.spaceBefore);
 
-	const found = variantFor(item, id, id);
-	const variant = item.variants[Math.max(0, found)];
+	const variants = variantsFor(item, player, viewer.target);
+	const found = variantFor(variants, id, id);
+	const variant = variants[Math.max(0, found)];
 	const name = translate(id, variant.name);
 	const text = fill(id, target, item.placeholder.length > 0 ? `${name} ${item.placeholder}` : name, "", menu);
 
@@ -963,7 +976,7 @@ function drawItem(screen: Screen, player: Player, viewer: Viewer, menu: Menu, it
 	if (found >= 0 && failed.length == 0 && !actionAllowed(id, menu.name, variant.action)) failed = "ACTION_CONDITION";
 
 	const enabled = found >= 0 && failed.length == 0 && !viewer.locked;
-	addLine(screen, id, slot, text, enabled, failed.length > 0 ? reasonFor(item, failed) : "");
+	addLine(screen, id, slot, text, enabled, failed.length > 0 ? reasonFor(item, failed, player, viewer.target) : "");
 	if (enabled) screen.slots[slot] = { action: variant.action, target: viewer.target };
 
 	screen.text += "\n".repeat(item.spaceAfter);
@@ -1026,8 +1039,9 @@ function drawList(screen: Screen, player: Player, viewer: Viewer, menu: Menu, li
 
 function drawRow(screen: Screen, player: Player, viewer: Viewer, menu: Menu, template: MenuItem, row: ListRow, slot: number) {
 	const id = player.id;
-	const found = variantFor(template, row.target, id);
-	const variant = template.variants[Math.max(0, found)];
+	const variants = variantsFor(template, player, row.target);
+	const found = variantFor(variants, row.target, id);
+	const variant = variants[Math.max(0, found)];
 	const text = fill(id, row.target, variant.name, row.text, menu);
 
 	let failed = "";
@@ -1038,7 +1052,7 @@ function drawRow(screen: Screen, player: Player, viewer: Viewer, menu: Menu, tem
 
 	const enabled = found >= 0 && failed.length == 0 && !viewer.locked;
 	let reason = "";
-	if (!enabled) reason = row.restrictionMessage.length > 0 ? ` ${row.restrictionMessage}` : reasonFor(template, failed);
+	if (!enabled) reason = row.restrictionMessage.length > 0 ? ` ${row.restrictionMessage}` : reasonFor(template, failed, player, row.target);
 	addLine(screen, id, slot, text, enabled, reason);
 	if (!enabled) return;
 
@@ -1058,8 +1072,8 @@ function restrictionFailure(player: number, target: number, restriction: string)
  * `enabled` said no; else the one for the restriction from "NAME:message|...",
  * the one message there is, or the restriction's own.
  */
-function reasonFor(item: MenuItem, failed: string) {
-	if (failed == NOT_ENABLED) return item.message.length > 0 ? ` ${item.message}` : "";
+function reasonFor(item: MenuItem, failed: string, player: Player, target: number) {
+	if (failed == NOT_ENABLED) return notEnabledReason(item, player, target);
 
 	for (const pair of pieces(item.restrictionMessage)) {
 		const colon = pair.indexOf(":");
@@ -1068,6 +1082,14 @@ function reasonFor(item: MenuItem, failed: string) {
 	}
 	const restriction = restrictionNamed(failed);
 	return restriction != null && restriction.message.length > 0 ? ` ${restriction.message}` : "";
+}
+
+/** " message" of an item `enabled` greys out: its own message, read for the player now. */
+function notEnabledReason(item: MenuItem, player: Player, target: number) {
+	const message = item.message;
+	if (message == null) return "";
+	const text = textOf(message, player, target);
+	return text.length > 0 ? ` ${text}` : "";
 }
 
 function listOf(viewer: Player, menu: Menu) {
