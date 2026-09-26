@@ -10,6 +10,8 @@ export default {
 			Text of a menu - a title, an item, a message: the text itself, or a
 			function that gives it for the player who looks; \`target\` is the row's
 			in a list menu, else the menu's. A lang key is translated either way.
+			Colour tags are chat's letters: \`!y\` yellow, \`!r\` red, \`!d\` grey, \`!w\`
+			white, \`!R\` to the right edge; chat's own \`!g\`, \`!b\` and \`!t\` are dropped.
 
 			    menus.create("SHOP", { title: (player) => \`Shop for \${player.name}\` });
 		`,
@@ -17,6 +19,8 @@ export default {
 			Текст меню — заголовок, пункт, сообщение: сам текст или функция, которая
 			даёт его для игрока, который смотрит; \`target\` — цель строки в
 			меню-списке, иначе меню. Ключ словаря переводится в обоих случаях.
+			Цветовые метки — буквы чата: \`!y\` жёлтый, \`!r\` красный, \`!d\` серый, \`!w\`
+			белый, \`!R\` — к правому краю; метки только для чата \`!g\`, \`!b\` и \`!t\` убираются.
 
 			    menus.create("SHOP", { title: (player) => \`Shop for \${player.name}\` });
 		`,

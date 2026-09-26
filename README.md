@@ -84,7 +84,7 @@ Text — a title, an item, a message — is the text itself or a function that g
 
 Keys: **1–7** choose, **8** is the next page, **9** the previous page or back to the menu this one was opened from, **0** closes.
 
-Text colours are written as tags: `!y` yellow, `!r` red, `!w` white, `!d` grey, `!R` aligns right.
+Text colours are written as tags, the same letters as in chat: `!y` yellow, `!r` red, `!d` grey, `!w` white, `!R` aligns right. Chat's own `!g`, `!b` and `!t` are dropped from a menu.
 
 ### API
 

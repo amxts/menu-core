@@ -11,6 +11,8 @@ export type MenuKind = "items" | "list";
  * Text of a menu - a title, an item, a message: the text itself, or a
  * function that gives it for the player who looks; `target` is the row's
  * in a list menu, else the menu's. A lang key is translated either way.
+ * Colour tags are chat's letters: `!y` yellow, `!r` red, `!d` grey, `!w`
+ * white, `!R` to the right edge; chat's own `!g`, `!b` and `!t` are dropped.
  *
  *     menus.create("SHOP", { title: (player) => `Shop for ${player.name}` });
  */
