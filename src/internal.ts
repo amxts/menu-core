@@ -70,7 +70,8 @@ export interface Viewer {
 	text: string;
 	locked: boolean;
 	timer: number;
-	ticking: boolean;
+	/** The handle of his countdown's timer, 0 when none runs. */
+	ticker: number;
 	depth: number;
 }
 

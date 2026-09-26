@@ -48,8 +48,6 @@ const DEFAULTS: Labels = {
 const PAGE_SLOTS = 7;
 /** A menu that opens a menu that opens a menu ... stops here. */
 const MAX_DEPTH = 5;
-const PLAYER_TASK = 0x4D430100;
-const MENU_TASK = 0x4D431000;
 const ALL_KEYS = 1023;
 const ADMIN_ACCESS: Access[] = ["Ban", "Rcon", "Admin", "Menu"];
 const KEY_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
@@ -57,6 +55,8 @@ const KEY_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
 const menus: Menu[] = [];
 const menuByName = new Map<string, Menu>();
 const viewers = new Map<number, Viewer>();
+/** The shared countdown's timer of each menu that has one running, by name. */
+const menuTimers = new Map<string, number>();
 /** Condition name -> the menus drawn with it, redrawn when it changes. */
 const conditionMenus = new Map<string, string[]>();
 
@@ -98,7 +98,7 @@ server.addEventListener("init", () => {
 
 server.addEventListener("putinserver", (event) => {
 	const viewer = viewerOf(event.player.id);
-	stopPlayerTimer(viewer, event.player.id);
+	stopPlayerTimer(viewer);
 	viewer.menu = null;
 	viewer.history = [];
 	viewer.page = 0;
@@ -298,7 +298,7 @@ export function show(player: Player, name: string, options: MenuShowOptions = {}
 
 	if (current != null && current != menu) {
 		if (!options.force && (viewer.timer > 0 || viewer.locked)) return false;
-		stopPlayerTimer(viewer, player.id);
+		stopPlayerTimer(viewer);
 		viewer.timer = 0;
 		dispatch("close", player, current.name, false);
 	}
@@ -326,7 +326,7 @@ export function close(player: Player, timeout = false) {
 	const menu = viewer.menu;
 	if (menu == null) return;
 
-	stopPlayerTimer(viewer, player.id);
+	stopPlayerTimer(viewer);
 	viewer.timer = 0;
 	viewer.locked = false;
 	viewer.menu = null;
@@ -398,7 +398,7 @@ export function setTimer(menu: Menu, seconds: number) {
 	if (menu.countdown <= 0) return false;
 
 	menu.countdown = seconds;
-	if (seconds <= 0) clearInterval(MENU_TASK + indexOf(menu));
+	if (seconds <= 0) stopMenuTimer(menu);
 	else refresh(menu.name);
 	return true;
 }
@@ -406,7 +406,7 @@ export function setTimer(menu: Menu, seconds: number) {
 /** Stops the shared countdown and closes the menu for everyone looking at it. False when none ran. */
 export function cancelTimer(menu: Menu) {
 	if (menu.countdown == 0) return false;
-	clearInterval(MENU_TASK + indexOf(menu));
+	stopMenuTimer(menu);
 	menu.countdown = 0;
 	for (const player of lookingAt(menu)) close(player);
 	return true;
@@ -656,7 +656,7 @@ function watchCondition(name: string, menu: string) {
 
 function viewerOf(id: number) {
 	if (!viewers.has(id)) {
-		const made: Viewer = { menu: null, page: 0, target: 0, history: [], slots: [], rows: 0, text: "", locked: false, timer: 0, ticking: false, depth: 0 };
+		const made: Viewer = { menu: null, page: 0, target: 0, history: [], slots: [], rows: 0, text: "", locked: false, timer: 0, ticker: 0, depth: 0 };
 		viewers.set(id, made);
 	}
 
@@ -709,7 +709,7 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 	let remember = !returning && previous != null && !options.skipHistory && back < 0;
 	if (remember && previous != null && previous.name.toUpperCase().includes("CONFIRM")) remember = false;
 
-	if (options.time! != -1) stopPlayerTimer(viewer, id);
+	if (options.time! != -1) stopPlayerTimer(viewer);
 	dispatch("open", player, menu.name, false);
 	if (!returning) viewer.locked = menu.locked;
 
@@ -1257,24 +1257,21 @@ function fill(id: number, target: number, input: string, name: string, menu: Men
 }
 
 function startPlayerTimer(viewer: Viewer, id: number) {
-	if (viewer.ticking) return;
-	viewer.ticking = true;
-	setInterval(onPlayerSecond, 1000, PLAYER_TASK + id);
+	if (viewer.ticker != 0) return;
+	viewer.ticker = setInterval(() => onPlayerSecond(viewer, id), 1000);
 }
 
-function stopPlayerTimer(viewer: Viewer, id: number) {
-	if (!viewer.ticking) return;
-	viewer.ticking = false;
-	clearInterval(PLAYER_TASK + id);
+function stopPlayerTimer(viewer: Viewer) {
+	if (viewer.ticker == 0) return;
+	clearInterval(viewer.ticker);
+	viewer.ticker = 0;
 }
 
-function onPlayerSecond(task: number) {
-	const id = task - PLAYER_TASK;
-	const viewer = viewerOf(id);
+function onPlayerSecond(viewer: Viewer, id: number) {
 	const player = new Player(id);
 
 	if (!player.isConnected || viewer.timer <= 0) {
-		stopPlayerTimer(viewer, id);
+		stopPlayerTimer(viewer);
 		return;
 	}
 
@@ -1286,21 +1283,26 @@ function onPlayerSecond(task: number) {
 		return;
 	}
 
-	stopPlayerTimer(viewer, id);
+	stopPlayerTimer(viewer);
 	if (menu == null) return;
 	if (menu.onTimeout.length > 0) runActions(player, menu.onTimeout, viewer.target);
 	if (player.isConnected && viewer.menu == menu) close(player, true);
 }
 
 function startMenuTimer(menu: Menu) {
-	setInterval(onMenuSecond, 1000, MENU_TASK + indexOf(menu));
+	if (menuTimers.has(menu.name)) return;
+	menuTimers.set(menu.name, setInterval(() => onMenuSecond(menu), 1000));
 }
 
-function onMenuSecond(task: number) {
-	const menu = menuAt(task - MENU_TASK);
+function stopMenuTimer(menu: Menu) {
+	if (!menuTimers.has(menu.name)) return;
+	clearInterval(menuTimers.get(menu.name));
+	menuTimers.delete(menu.name);
+}
 
-	if (menu == null || menu.countdown <= 0) {
-		clearInterval(task);
+function onMenuSecond(menu: Menu) {
+	if (menu.countdown <= 0) {
+		stopMenuTimer(menu);
 		return;
 	}
 
@@ -1311,7 +1313,7 @@ function onMenuSecond(task: number) {
 		return;
 	}
 
-	clearInterval(task);
+	stopMenuTimer(menu);
 	timerExpired.emit(menu.name);
 	for (const player of lookingAt(menu)) {
 		if (menu.onTimeout.length > 0) runActions(player, menu.onTimeout, viewerOf(player.id).target);
