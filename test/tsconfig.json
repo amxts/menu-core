@@ -1,0 +1,15 @@
+{
+	// The tests are not plugin code: they run under Bun, with its types, and
+	// import @amxts/core/test-utils by the core's package exports.
+	"compilerOptions": {
+		"target": "ES2022",
+		"lib": ["ES2022"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"types": ["bun"],
+		"strict": true,
+		"noEmit": true,
+		"skipLibCheck": true
+	},
+	"include": ["./**/*.ts", "../testing/**/*.ts"]
+}

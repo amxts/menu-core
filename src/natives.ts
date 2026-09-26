@@ -2,18 +2,17 @@
  * Menu Core for Pawn plugins: the 29 mc_* natives of the original
  * menu_core.amxx, as include/menu_core.inc declares them.
  */
+import { Player, plugin } from "@amxts/core";
 import {
 	PawnFunction,
-	Player,
 	caller,
 	cellArrayRows,
 	cellsText,
 	createCellArray,
 	destroyCellArray,
-	plugin,
 	pushCellArrayRow,
 	textCells,
-} from "~/facade";
+} from "@amxts/core/kit";
 import * as menus from "./index";
 
 plugin({ name: "Menu Core", version: "1.6.2", author: "kukson", description: "Menus from ini files: the mc_* natives" });

@@ -1,0 +1,4 @@
+{
+	// The editor config amxts writes (npx amxts prepare, and every build).
+	"extends": "./.amxts/tsconfig.json"
+}

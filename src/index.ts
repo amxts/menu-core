@@ -2,18 +2,8 @@
  * Menu Core — an opinionated way to create menus: from an ini file or in code,
  * with conditions, placeholders and lists. How to use it: README.md.
  */
-import {
-	Access,
-	accessOf,
-	Forward,
-	Player,
-	clearInterval,
-	print,
-	publicFor,
-	server,
-	setInterval,
-	showMenu,
-} from "~/facade";
+import { Access, accessOf, Forward, Player, clearInterval, print, server, setInterval } from "@amxts/core";
+import { publicFor, showMenu } from "@amxts/core/kit";
 import { GetLangTransKey, LookupLangKey, get_maxplayers, register_menucmd, register_menuid } from "~/natives";
 import * as ini from "@amxts/config-core";
 import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, Menu, MenuCoreOptions, MenuEvent, MenuEventType, MenuItem, MenuItemOptions, MenuListener, MenuShowOptions, PlaceholderValue, RestrictionTest, Variant } from "./types";

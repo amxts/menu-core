@@ -155,22 +155,22 @@ VIEW = {
 
 ## Тесты
 
-`installMenus(server)` из тестовой библиотеки amxts даёт фейковому серверу меню, клавиши, фейковые Pawn-плагины и словарь. Вызывается до загрузки плагинов:
+Menu Core поставляет тестовый набор для поддельного сервера amxts: его ставит `setup()` из `@amxts/core/test-utils`, а `menusOf(server)` даёт то, что показывает меню игрока, клавиши, которые он нажимает, поддельные Pawn-плагины и словарь:
 
 ```ts
-import { FakeServer, installMenus } from "@amxts/core/src/testing";
+import { setup } from "@amxts/core/test-utils";
+import { menusOf } from "@amxts/menu-core/testing";
 
-const server = new FakeServer({ files });
-const menus = installMenus(server);
+const server = await setup({ files });
+const menus = menusOf(server);
 const admin = menus.pawnPlugin("admin.amxx", {
 	OnKick: (_id: number, target: number) => kicked.push(target),
 });
-await server.load("@amxts/config-core");
-await server.load("@amxts/menu-core");
-server.start();
 
 admin.native("mc_register_action", "KICK", "OnKick");
 admin.native("mc_show_menu", player.id, "LIST_KICK");
 menus.screen(player)?.text;   // что видит игрок
 menus.press(player, 1);
 ```
+
+Тесты самого модуля — в `test/` (`npm test`); `playground/` — проект с Menu Core внутри, его они тоже загружают.

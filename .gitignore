@@ -5,3 +5,7 @@ bun.lock
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+# amxts prepare: the editor config the playground extends
+.amxts/
+# amxts build in the playground
+dist/

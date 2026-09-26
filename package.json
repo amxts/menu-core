@@ -20,7 +20,8 @@
 		"counter-strike"
 	],
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./testing": "./testing/index.ts"
 	},
 	"types": "./src/index.ts",
 	"files": [
@@ -30,14 +31,18 @@
 		"README.ru.md",
 		"include",
 		"scripts/docs",
-		"src"
+		"src",
+		"testing"
 	],
 	"amxts": {
 		"module": "src/index.ts",
 		"natives": "src/natives.ts",
-		"include": "include/menu_core.inc"
+		"include": "include/menu_core.inc",
+		"testing": "testing/index.ts"
 	},
 	"scripts": {
+		"test": "bun test",
+		"check": "amxts check",
 		"lint": "eslint",
 		"lint:fix": "eslint --fix"
 	},
@@ -47,6 +52,7 @@
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.5.1",
+		"@types/bun": "^1.4.2",
 		"eslint": "^10.11.0",
 		"typescript": "^6.0.3"
 	},
