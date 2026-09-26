@@ -26,6 +26,8 @@
 	"files": [
 		"README.md",
 		"README.ru.md",
+		"PAWN.md",
+		"PAWN.ru.md",
 		"include",
 		"src"
 	],

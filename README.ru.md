@@ -1,104 +1,128 @@
-# Меню: menu-core
+<div align="center">
 
-Меню из ini-файла или из кода: показывается через `show_menu`, клавиши
-приходят через `register_menucmd`. Это menu_core на TypeScript: модуль, который
-TS-плагин импортирует, и плагин, который отдаёт Pawn-плагинам нативы `mc_*`
-menu_core.
+# Menu Core
+
+*Удобный способ создавать меню для серверов Counter-Strike 1.6*
+
+[![amxts module](https://img.shields.io/badge/amxts-module-3178c6?style=flat-square)](https://amxts.github.io/)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+[Возможности](#возможности) • [Установка](#установка) • [Использование](#использование) • [Меню в файле](#меню-в-файле) • [Pawn-плагины](#pawn-плагины) • [Тесты](#тесты)
+
+[English](README.md) | **Русский**
+
+</div>
+
+Опишите меню один раз — в ini-файле или в коде, — а остальное Menu Core сделает сам: страницы, клавиши, возврат назад, обратный отсчёт и пункты, которые появляются, скрываются или становятся серыми в зависимости от того, кто смотрит. Это модуль [amxts](https://amxts.github.io/), написанный на TypeScript. Он же отдаёт нативы оригинального `menu_core.amxx`, так что существующие Pawn-плагины продолжают работать.
 
 > [!WARNING]
-> **В работе**
-> menu-core ещё доделывается. В игре его пробовали пока один раз, и поведение
-> может измениться.
+> **В работе.** В игре Menu Core пробовали всего несколько раз, и API ещё может измениться.
 
-## Из TypeScript
+## Возможности
+
+- **Меню из файла или из кода.** Админ правит `menu.ini`, не трогая плагин; плагины добавляют свои пункты на ходу.
+- **Условия и ограничения.** Пункт показывается, только когда он уместен (`IS_ALIVE`, `!IS_SPECTATOR`), или становится серым с причиной (`ADMIN`, `FLAG_abc`).
+- **Подстановки.** `%hp%`, `%name%`, `%time%` и любые свои значения подставляются при каждой отрисовке.
+- **Меню-списки.** Строка на каждого игрока или на каждый элемент своего списка, с фильтрами и сообщением, если никого не осталось.
+- **Варианты.** `SPECTATE|JOIN` показывает тот вариант, чьё условие выполняется.
+- **Отсчёт и блокировка.** Меню с таймером — свой у каждого игрока или один на всех — и меню, которое нельзя закрыть или заменить.
+- **Один экземпляр на сервер.** Все плагины, на TypeScript и на Pawn, наполняют и открывают одни и те же меню.
+- **Без ограничений Pawn.** Длинные названия, сколько угодно пунктов, меню на кириллице длиннее 500 байт.
+
+## Установка
+
+```bash
+npm install @amxts/menu-core
+```
+
+И добавьте его в `amxts.config.ts` проекта:
 
 ```ts
-import { Player } from "~/facade";
-import * as menus from "~/modules/menu-core";
+export default defineConfig({
+	modules: ["@amxts/menu-core"],
+	menus: {
+		file: "myserver/menu",   // configs/myserver/menu.ini
+		fallback: "menu",        // configs/menu.ini, если в первом нет меню
+	},
+});
+```
+
+Menu Core читает меню через [Universal Config](https://github.com/amxts/universal-config). Пакетный менеджер ставит его вместе с Menu Core, а сборка загружает первым, так что для него ничего добавлять не нужно.
+
+| Опция | По умолчанию | Что делает |
+| --- | --- | --- |
+| `file` | `"menu"` | Файл меню в `configs/`, без `.ini`. |
+| `fallback` | `""` | Читается вместо `file`, если в нём нет меню; `""` — без запасного. |
+
+## Использование
+
+```ts
+import { server } from "@amxts/core";
+import * as menus from "@amxts/menu-core";
 
 menus.addCondition("IS_HURT", (player) => player.health < 100);
 menus.addPlaceholder("hp", (player) => `${player.health}`);
-menus.addAction("RESET_SCORE", resetScore);
 
 const shop = menus.create("SHOP", "Магазин");
-menus.addItem(shop, "Лечение (%hp% HP)", { condition: "IS_HURT", onSelect: heal });
-menus.addItem(shop, "Сбросить счёт", { action: "RESET_SCORE" });
+menus.addItem(shop, "Лечение (%hp% HP)", {
+	condition: "IS_HURT",
+	onSelect: (player) => {
+		player.health = 100;
+	},
+});
+menus.addItem(shop, "Сбросить счёт", {
+	onSelect: (player) => {
+		player.frags = 0;
+	},
+});
 menus.addItem(shop, "Закрыть", { action: "CLOSE_MENU", spaceBefore: 1 });
 
-function heal(player: Player) {
-	player.health = 100;
-}
-
-function resetScore(player: Player) {
-	player.frags = 0;
-}
-
-menus.show(player, "SHOP");
-menus.show(player, "LIST_KICK", { target: victim.id, time: 10 });
+server.addCommand("/shop", (player) => {
+	menus.show(player, "SHOP");
+});
 ```
 
-Меню — обычный объект (`Menu`): его поля — `hideExit`, `locked`, `time` —
-меняются напрямую. Всё остальное — функции модуля, как у `fs`.
+Клавиши: **1–7** выбирают, **8** — следующая страница, **9** — предыдущая страница или назад, в меню, из которого открыли это, **0** закрывает.
 
-- `create(name, title)` — меню из кода; если имя занято — то, что уже есть.
-  Имя на `LIST_` — меню-список.
-- `addItem(menu, name, options)` / `addFixedItem(menu, slot, name, options)` —
-  опции: `placeholder`, `condition`, `action` или `onSelect`, `restriction`,
-  `restrictionMessage`, `at`, `spaceBefore`, `spaceAfter`.
-- `addCondition`, `addAction`, `addPlaceholder`, `addRestriction`,
-  `addActionCheck`, `addConditionFilter`, `setListSource` — то, что меню
-  называют по имени, отвечают функции.
-- `addEventListener("open" | "close" | "show", listener)` — "show" приходит
-  до открытия; `event.preventDefault()` его отменяет.
-- `show(player, name, options)` — false, если меню не открылось; опции:
-  `time`, `target`, `resetHistory`, `force`, `skipHistory`.
-- `close(player)`, `refresh("A B")`, `conditionChanged(name)`,
-  `lock(player)`, `setTimer(menu, seconds)`, `cancelTimer(menu)`.
+Цвета в тексте пишутся метками: `!y` жёлтый, `!r` красный, `!w` белый, `!d` серый, `!R` выравнивание вправо.
 
-Клавиши: 1-7 — выбор, 8 — следующая страница, 9 — предыдущая или назад, в
-меню, откуда пришли, 0 — закрыть.
+### API
 
-## Из любого плагина: один menu-core на сервер
+| Функция | Что делает |
+| --- | --- |
+| `create(name, title)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. |
+| `register(name)` | Заранее загружает меню из файла. |
+| `addItem(menu, name, options?)` | Добавляет пункт. Опции: `placeholder`, `condition`, `action` или `onSelect`, `restriction`, `restrictionMessage`, `at`, `spaceBefore`, `spaceAfter`. |
+| `addFixedItem(menu, slot, name, options?)` | Пункт, который на каждой странице занимает слот 1–7. |
+| `addCondition(name, test)` | Когда пункт показывается. |
+| `addAction(name, handler)` | Что делает пункт, названный в файле. |
+| `addPlaceholder(name, value)` | Во что превращается `%name%`. |
+| `addRestriction(name, test, message?)` | Когда пункт серый и почему. |
+| `setListSource(name, rows)` | Строки меню-списка: `listRow(target, text)`, `textRow(text)`. |
+| `addEventListener("open" \| "close" \| "show", listener)` | `"show"` приходит до открытия меню; `event.preventDefault()` его отменяет. |
+| `show(player, name, options?)` | Открывает меню; `false`, если оно не открылось. Опции: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
+| `close(player)` · `refresh("A B")` · `conditionChanged(name)` | Закрыть, перерисовать названные меню, перерисовать то, что зависит от условия. |
+| `lock(player)` · `setTimer(menu, seconds)` · `cancelTimer(menu)` | Блокировка и отсчёт. |
 
-На сервере один экземпляр `~/modules/menu-core` — плагина menu-core. Любой
-ваш плагин, который его импортирует, вызывает этот экземпляр, с теми же
-функциями и типами (см. Общие модули). Поэтому меню,
-которое наполняют несколько плагинов, — главное меню, куда Pawn-плагины
-добавляют пункты через `mc_*`, — это одно меню, а у игрока одно открытое
-меню, кто бы его ни открыл.
-
-```ts
-import * as menus from "~/modules/menu-core";
-
-menus.register("MAIN_MENU");
-menus.addCondition("IS_ALIVE", (player) => player.isAlive);
-menus.addAction("RESET_SCORE", resetScore);
-menus.setListSource("LIST_FPS_CHECK", rows);   // rows(viewer) возвращает строки menus.listRow(target, text)
-menus.show(player, "MAIN_MENU", { resetHistory: true });
-```
-
-Плагин menu-core должен быть в `plugins.ini`, а меню он читает через
-`~/modules/universal-config` — плагина universal-config, — так что и тот
-тоже.
+Меню — обычный объект `Menu`: поля вроде `hideExit`, `locked` и `time` задаются напрямую.
 
 ## Меню в файле
 
-`setConfigFile("myplugin/menu")` читает `configs/myplugin/menu.ini`, когда
-меню понадобится впервые (`register(name)` или `show` незнакомого имени).
+Меню читается из файла, когда его впервые запрашивают: через `register(name)` или через `show` с именем, которого Menu Core ещё не знает.
 
 ```ini
 [MAIN]
-PREFIX = MYPLUGIN_CHAT_PREFIX       ; префикс сообщения "в списке никого"
+PREFIX = MYPLUGIN_CHAT_PREFIX       ; префикс в чате для сообщения «некого показать»
 KEY = {
-	EXIT = MYPLUGIN_MENU_EXIT       ; кнопки: ключ перевода или сам текст
-	NUMBER = MYPLUGIN_MENU_NUMBER   ; "\y[%d]\w", если словарь не говорит иначе
+	EXIT = MYPLUGIN_MENU_EXIT       ; кнопки: ключ словаря или сам текст
+	NUMBER = MYPLUGIN_MENU_NUMBER   ; "!y[%d]!w", если словарь не говорит иначе
 }
 
 [MAIN_MENU]
 TITLE = MYPLUGIN_MENU_MAIN_TITLE
 HIDE_BACK = YES
 ITEMS = {
-	; имя | плейсхолдер | условие | действие | ограничение | сообщение | отступ
+	; название | подстановка | условие | действие | ограничение | сообщение | отступ
 	"MYPLUGIN_MENU_MAIN_ADMIN" "" "IS_ADMIN" "SHOW_ADMIN_MENU" "ADMIN" "" ""
 	"MYPLUGIN_MENU_MAIN_SPECTATE|MYPLUGIN_MENU_MAIN_JOIN" "" "!IS_SPECTATOR|IS_SPECTATOR" "JOIN_SPECTATE|JOIN_TEAM" "" "" ""
 }
@@ -110,95 +134,43 @@ FILTER = {
 	"IS_SPECTATOR" "MYPLUGIN_CHAT_NO_SPECTATORS"
 }
 VIEW = {
-	; имя | условие | действие | ограничение | сообщение
+	; название | условие | действие | ограничение | сообщение
 	"%name%" "" "SWAP_WITH_SPECTATOR" "" ""
 }
 ```
 
-- `TITLE`, `ACTIVE_ON` (меню открывается, только пока условие выполнено),
-  `HIDE_BACK`, `HIDE_EXIT`, `TIME` (таймер в секундах), `ON_TIMEOUT`
-  (действие, когда он кончился), `LOCKED`, `GLOBAL` (один таймер на всех).
-- `A|B` в имени, условии или действии — варианты: показывается первый, чьё
-  условие выполнено. `!NAME` переворачивает условие; несколько имён через
-  пробел должны выполняться все.
-- Условие, ограничение или действие, которое никто не зарегистрировал:
-  `ADMIN` и `FLAG_<буквы>` проверяются по доступу игрока; любое другое
-  условие не выполнено.
-- Встроенные действия: `SHOW_<МЕНЮ>` открывает меню, `CLOSE_MENU` закрывает;
-  в строке действий их может быть несколько.
-- Плейсхолдеры: `%name%` (текст строки списка), `%target%`, `%time%` и любой
-  зарегистрированный.
-- Меню-список рисует строку `VIEW` на каждого игрока — или на каждую строку
-  своего источника, — пропуская тех, кто не прошёл `FILTER`. Если не осталось
-  никого, меню не открывается, а игрок получает сообщение фильтра.
+- **Ключи меню:** `TITLE`, `ACTIVE_ON` (меню открывается, только пока условие выполняется), `HIDE_BACK`, `HIDE_EXIT`, `TIME` (отсчёт в секундах), `ON_TIMEOUT` (действие, когда он закончился), `LOCKED`, `GLOBAL` (один отсчёт на всех).
+- **Варианты:** `A|B` в названии, условии или действии; показывается первый, чьё условие выполняется.
+- **Условия:** `!NAME` переворачивает условие; несколько имён через пробел должны выполняться все. `ADMIN` и `FLAG_<буквы>`, если их никто не зарегистрировал, проверяются по правам игрока; любое другое незнакомое условие не выполняется.
+- **Встроенные действия:** `SHOW_<MENU>` открывает это меню, `CLOSE_MENU` закрывает; в строке действия их может быть несколько.
+- **Подстановки:** `%name%` (текст строки списка), `%target%`, `%time%` и любые зарегистрированные.
+- **Меню-список** рисует строку `VIEW` на каждого игрока или на каждую строку своего источника и пропускает те, что не прошли `FILTER`. Если никого не осталось, меню не открывается, а игрок получает сообщение фильтра.
 
-## Для Pawn-плагинов
+> [!TIP]
+> Цветовые коды из меню для Pawn (`\y`, `\r`) по-прежнему работают, так что существующий `menu.ini` подойдёт без правок.
 
-Плагин menu-core отдаёт Pawn-плагинам 29 нативов menu_core —
-`mc_register_action`, `mc_show_menu`, `mc_add_menu_item` и остальные — с
-сигнатурами оригинального `menu_core.inc`, поэтому скомпилированные `.amxx`
-работают с ним без изменений. Он заменяет menu_core.amxx: тот закомментировать
-в `plugins.ini`; `amxts_host.amxx` остаётся на своём месте, последним. Меню он
-читает через `~/modules/universal-config`, поэтому в `plugins.ini` amxts
-universal-config стоит раньше.
+## Pawn-плагины
 
-Pawn-плагин называет свои обработчики именем public, и menu-core зовёт их
-через callfunc; id плагина берётся из вызова натива.
-
-Сгенерированный `menu_core.inc` (при выкладке он копируется в
-`addons/amxmodx/scripting/include` сервера) отличается от оригинала только
-записью, а не тем, что передаёт скомпилированный плагин:
-
-| оригинал | сгенерированный |
-| --- | --- |
-| `#define MP_LOCKED 0` ... `MP_FILTER 7` | `enum MenuProperty { MP_LOCKED = 0, ... }` |
-| `property` в трёх нативах свойств | `MenuProperty:property` |
-| `mc_get_menu_property_string(menuIdx, property, value[], len)` | `..., out[], len)` |
-| `mc_add_list_text(Array:aItems, ...)` | `mc_add_list_text(aItems, ...)` |
-| — | `mc_get_menu_text(id, out[], len)`: что показывает меню игрока, добавлено в amxts для тестов и логов |
-
-Плагин, собранный с новым include, получит предупреждение о теге на голое
-число там, где ждут `MenuProperty:`, и на `Array:` в `mc_add_list_text`.
-
-## Чем отличается от оригинала
-
-- Нет ограничений Pawn: имена, заголовки и плейсхолдеры любой длины, меню
-  держит все пункты, путь назад любой длины, меню длиннее 500 байт (кириллица
-  доходит до них быстро) приходит целиком.
-- `mc_get_menu_property_string(idx, MP_SECTION)` работает: оригинал сравнивал
-  `MP_SECTION` из include (5) с 4.
-- Фильтр условия работает везде, где условие спрашивают, как написано в
-  `menu_core.inc`; оригинал применял его только к ограничениям.
-- `message` ограничения (`mc_register_restriction`) показывается у пункта,
-  который оно гасит, если у пункта нет своего сообщения; оригинал хранил его и
-  не показывал.
-- Когда меню закрывается, потому что поверх открылось другое, обработчики
-  закрытия получают его имя; оригинал передавал "".
-- Заблокированное меню гасит пункты любого меню; оригинал гасил только строки
-  списков.
-- `mc_show_menu` секции, которую никто не зарегистрировал, читает её из файла.
-- `isCritical` у `mc_register_action` принимается и ничего не делает, как в
-  оригинале.
+Существующие Pawn-плагины продолжают работать: Menu Core отдаёт 29 нативов `mc_*` оригинального `menu_core.amxx` с теми же сигнатурами, а в пакете лежит `include/menu_core.inc`. Замените им `menu_core.amxx` в `plugins.ini`. Подробности и отличия от оригинала — в [PAWN.ru.md](PAWN.ru.md).
 
 ## Тесты
 
-`installMenus(server)` из той же библиотеки для тестов, что и `loadPlugin`
-(testing.md), вызванный до загрузки плагинов, даёт поддельному
-серверу меню, клавиши, поддельные Pawn-плагины и словарь:
+`installMenus(server)` из тестовой библиотеки amxts даёт фейковому серверу меню, клавиши, фейковые Pawn-плагины и словарь. Вызывается до загрузки плагинов:
 
 ```ts
+import { FakeServer, installMenus } from "@amxts/core/src/testing";
+
 const server = new FakeServer({ files });
 const menus = installMenus(server);
 const admin = menus.pawnPlugin("admin.amxx", {
 	OnKick: (_id: number, target: number) => kicked.push(target),
-	Hp: (_id: number, _target: number, value: PawnArray) => value.set("100"),
 });
-await server.load("as/menu-core.ts");
+await server.load("@amxts/universal-config");
+await server.load("@amxts/menu-core");
 server.start();
 
-admin.native("mc_register_action", "KICK", "OnKick");      // вызов из admin.amxx
+admin.native("mc_register_action", "KICK", "OnKick");
 admin.native("mc_show_menu", player.id, "LIST_KICK");
-menus.screen(player)?.text;                                  // что он видит, и клавиши
+menus.screen(player)?.text;   // что видит игрок
 menus.press(player, 1);
-menus.translate({ MYPLUGIN_MENU_EXIT: "Выход" });
 ```
