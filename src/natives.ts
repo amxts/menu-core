@@ -40,105 +40,24 @@ export enum MenuProperty {
 const ROW_CELLS = 289;
 const PLACEHOLDER_CELLS = 256;
 
-/** A Pawn callback and what it was registered for. */
-interface PawnEntry {
-	fn: PawnFunction;
-	menu: string;
-	name: string;
-}
-
-const conditionFns = new Map<string, PawnFunction>();
-const actionFns = new Map<string, PawnFunction>();
-const placeholderFns = new Map<string, PawnFunction>();
-const restrictionFns = new Map<string, PawnFunction>();
-const sourceFns = new Map<string, PawnFunction>();
-const filteredConditions: string[] = [];
-const actionChecks: PawnEntry[] = [];
-const conditionFilters: PawnEntry[] = [];
-const openCallbacks: PawnFunction[] = [];
-const closeCallbacks: PawnFunction[] = [];
-const showFilters: PawnFunction[] = [];
+// What each native has registered: the numbers the originals return.
 let conditionCount = 0;
 let actionCount = 0;
 let restrictionCount = 0;
-
-menus.addActionCheck("", "", pawnActionCheck);
-menus.addEventListener("open", (event) => {
-	for (const fn of openCallbacks) fn.call().int(event.player.id).text(event.menu).run();
-});
-menus.addEventListener("close", (event) => {
-	for (const fn of closeCallbacks) fn.call().int(event.player.id).text(event.menu).bool(event.timeout).run();
-});
-menus.addEventListener("show", (event) => {
-	for (const fn of showFilters) {
-		if (fn.call().int(event.player.id).text(event.menu).run() == 0) {
-			event.preventDefault();
-			return;
-		}
-	}
-});
+let filterCount = 0;
+let openCount = 0;
+let closeCount = 0;
+let showCount = 0;
 
 /** A public of the plugin calling the native that is running; null when it has none of that name. */
 function publicOf(name: string) {
 	return PawnFunction.find(caller(), name);
 }
 
-function pawnCondition(player: Player, viewer: Player, name: string) {
-	const key = name.toUpperCase();
-	if (!conditionFns.has(key)) return false;
-	return conditionFns.get(key).call().int(player.id).int(viewer.id).text(name).run() != 0;
-}
-
-function pawnAction(player: Player, target: number, name: string) {
-	if (!actionFns.has(name)) return;
-	const menu = menus.activeMenu(player);
-	const call = actionFns.get(name).call().int(player.id);
-	// An items menu's action gets the action's name, a list menu's the row's target.
-	if (menu != null && menu.kind == "items") call.text(name);
-	else call.int(target);
-	call.run();
-}
-
-function pawnPlaceholder(player: Player, target: number, name: string) {
-	if (!placeholderFns.has(name)) return "";
-	const call = placeholderFns.get(name).call().int(player.id).int(target).buffer(PLACEHOLDER_CELLS).int(PLACEHOLDER_CELLS - 1);
-	call.run();
-	return call.bufferText;
-}
-
-function pawnRestriction(player: Player, name: string, target: number) {
-	const colon = name.indexOf(":");
-	const key = (colon < 0 ? name : name.slice(0, colon)).toUpperCase();
-	const found = restrictionFns.has(key) ? key : "*";
-	if (!restrictionFns.has(found)) return false;
-	return restrictionFns.get(found).call().int(player.id).text(name).int(target).run() != 0;
-}
-
-function pawnActionCheck(player: Player, menu: string, action: string) {
-	for (const entry of actionChecks) {
-		if (entry.menu.length > 0 && entry.menu != menu) continue;
-		if (entry.name.length > 0 && entry.name != action) continue;
-		if (entry.fn.call().int(player.id).text(menu).text(action).run() == 0) return false;
-	}
-	return true;
-}
-
-function pawnConditionFilter(player: Player, viewer: Player, name: string, value: boolean) {
-	let result = value;
-	for (const entry of conditionFilters) {
-		if (entry.name.toUpperCase() != name.toUpperCase()) continue;
-		result = entry.fn.call().int(player.id).int(viewer.id).text(name).bool(result).run() != 0;
-	}
-	return result;
-}
-
 /** A data source fills an `Array:` of 289-cell items; one that does not return 1 is not used. */
-function pawnSource(viewer: Player, menu: string) {
-	const key = menu.toUpperCase();
-	if (!sourceFns.has(key)) return null;
-
+function rowsFrom(fn: PawnFunction, viewer: Player) {
 	const items = createCellArray(ROW_CELLS);
-	const answered = sourceFns.get(key).call().int(viewer.id).int(items).run();
+	const answered = fn.call().int(viewer.id).int(items).run();
 	const rows = answered == 1 ? cellArrayRows(items, ROW_CELLS).map(rowOf) : null;
 	destroyCellArray(items);
 	return rows;
@@ -164,13 +83,7 @@ function answer(done: boolean) {
  */
 export function mc_register_condition(name: string, callback: string) {
 	const fn = publicOf(callback);
-	const key = name.toUpperCase();
-
-	if (fn != null && !conditionFns.has(key)) {
-		conditionFns.set(key, fn);
-		menus.addCondition(name, pawnCondition);
-	}
-
+	if (fn != null) menus.addCondition(name, (player, viewer, used) => fn.call().int(player.id).int(viewer.id).text(used).run() != 0);
 	return conditionCount++;
 }
 
@@ -185,9 +98,15 @@ export function mc_register_condition(name: string, callback: string) {
 export function mc_register_action(name: string, callback: string, _isCritical = false) {
 	const fn = publicOf(callback);
 
-	if (fn != null && !actionFns.has(name)) {
-		actionFns.set(name, fn);
-		menus.addAction(name, pawnAction);
+	if (fn != null) {
+		menus.addAction(name, (player, target) => {
+			const menu = menus.activeMenu(player);
+			const call = fn.call().int(player.id);
+			// An items menu's action gets the action's name, a list menu's the row's target.
+			if (menu != null && menu.kind == "items") call.text(name);
+			else call.int(target);
+			call.run();
+		});
 	}
 
 	return actionCount++;
@@ -200,8 +119,12 @@ export function mc_register_action(name: string, callback: string, _isCritical =
  */
 export function mc_register_placeholder(name: string, callback: string) {
 	const fn = publicOf(callback);
-	if (fn != null && !placeholderFns.has(name)) placeholderFns.set(name, fn);
-	return menus.addPlaceholder(name, pawnPlaceholder);
+	return menus.addPlaceholder(name, (player, target) => {
+		if (fn == null) return "";
+		const call = fn.call().int(player.id).int(target).buffer(PLACEHOLDER_CELLS).int(PLACEHOLDER_CELLS - 1);
+		call.run();
+		return call.bufferText;
+	});
 }
 
 /**
@@ -253,13 +176,7 @@ export function mc_refresh_menu(sections: string) {
  */
 export function mc_register_restriction(name: string, callback: string, message?: string) {
 	const fn = publicOf(callback);
-	const key = name == "*" ? name : name.toUpperCase();
-
-	if (fn != null && !restrictionFns.has(key)) {
-		restrictionFns.set(key, fn);
-		menus.addRestriction(name, pawnRestriction, message);
-	}
-
+	if (fn != null) menus.addRestriction(name, (player, used, target) => fn.call().int(player.id).text(used).int(target).run() != 0, message);
 	return restrictionCount++;
 }
 
@@ -270,7 +187,7 @@ export function mc_register_restriction(name: string, callback: string, message?
  */
 export function mc_register_action_condition(menuSection: string, actionName: string, callback: string) {
 	const fn = publicOf(callback);
-	if (fn != null) actionChecks.push({ fn, menu: menuSection, name: actionName });
+	if (fn != null) menus.addActionCheck(menuSection, actionName, (player, menu, action) => fn.call().int(player.id).text(menu).text(action).run() != 0);
 	return 1;
 }
 
@@ -282,18 +199,9 @@ export function mc_register_action_condition(menuSection: string, actionName: st
  */
 export function mc_register_condition_filter(condition: string, callback: string) {
 	const fn = publicOf(callback);
-
-	if (fn != null) {
-		conditionFilters.push({ fn, menu: "", name: condition });
-		const key = condition.toUpperCase();
-
-		if (!filteredConditions.includes(key)) {
-			filteredConditions.push(key);
-			menus.addConditionFilter(condition, pawnConditionFilter);
-		}
-	}
-
-	return conditionFilters.length - 1;
+	if (fn == null) return filterCount - 1;
+	menus.addConditionFilter(condition, (player, viewer, name, value) => fn.call().int(player.id).int(viewer.id).text(name).bool(value).run() != 0);
+	return filterCount++;
 }
 
 /**
@@ -306,15 +214,15 @@ export function mc_register_condition_filter(condition: string, callback: string
  */
 export function mc_register_list_data_source(menuName: string, callback: string) {
 	const fn = publicOf(callback);
-	if (fn != null) sourceFns.set(menuName.toUpperCase(), fn);
-	return menus.setListSource(menuName, pawnSource);
+	return menus.setListSource(menuName, viewer => (fn != null ? rowsFrom(fn, viewer) : null));
 }
 
 /** Called when a menu opens. Callback: public callback(id, const section[]). Returns its id. */
 export function mc_register_menu_open_callback(callback: string) {
 	const fn = publicOf(callback);
-	if (fn != null) openCallbacks.push(fn);
-	return openCallbacks.length - 1;
+	if (fn == null) return openCount - 1;
+	menus.addEventListener("open", event => fn.call().int(event.player.id).text(event.menu).run());
+	return openCount++;
 }
 
 /**
@@ -324,8 +232,9 @@ export function mc_register_menu_open_callback(callback: string) {
  */
 export function mc_register_menu_close_callback(callback: string) {
 	const fn = publicOf(callback);
-	if (fn != null) closeCallbacks.push(fn);
-	return closeCallbacks.length - 1;
+	if (fn == null) return closeCount - 1;
+	menus.addEventListener("close", event => fn.call().int(event.player.id).text(event.menu).bool(event.timeout).run());
+	return closeCount++;
 }
 
 /**
@@ -335,8 +244,12 @@ export function mc_register_menu_close_callback(callback: string) {
  */
 export function mc_register_show_filter(callback: string) {
 	const fn = publicOf(callback);
-	if (fn != null) showFilters.push(fn);
-	return showFilters.length - 1;
+	if (fn == null) return showCount - 1;
+	// The first filter that says no stops the menu; the ones after it are not asked.
+	menus.addEventListener("show", (event) => {
+		if (!event.defaultPrevented && fn.call().int(event.player.id).text(event.menu).run() == 0) event.preventDefault();
+	});
+	return showCount++;
 }
 
 /** Stops the menu's shared countdown and closes it for everyone. Returns 1, or 0 when none ran. */

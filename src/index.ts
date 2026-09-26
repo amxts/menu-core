@@ -161,9 +161,7 @@ export function register(name: string) {
 
 /** A menu made in code - or the one of that name already there. A name starting with LIST_ makes a list menu. */
 export function create(name: string, title: string) {
-	const known = find(name);
-	if (known != null) return known;
-	return add(newMenu(name, title));
+	return find(name) ?? add(newMenu(name, title));
 }
 
 /**
@@ -229,9 +227,8 @@ export function addAction(name: string, run: ActionHandler) {
 
 /** What %name% stands for in titles and items. A name registered twice keeps the first. */
 export function addPlaceholder(name: string, value: PlaceholderValue) {
-	for (let i = 0; i < placeholders.length; i++) {
-		if (placeholders[i].name == name) return i;
-	}
+	const known = placeholders.findIndex(entry => entry.name == name);
+	if (known >= 0) return known;
 	placeholders.push({ name, value });
 	return placeholders.length - 1;
 }
@@ -256,12 +253,13 @@ export function addConditionFilter(name: string, filter: ConditionFilter) {
 
 /** The rows of the list menu `menu`, instead of the players; a second source replaces the first. */
 export function setListSource(menu: string, rows: ListSource) {
-	for (let i = 0; i < sources.length; i++) {
-		if (sources[i].menu == menu) {
-			sources[i].rows = rows;
-			return i;
-		}
+	const known = sources.findIndex(source => source.menu == menu);
+
+	if (known >= 0) {
+		sources[known].rows = rows;
+		return known;
 	}
+
 	sources.push({ menu, rows });
 	return sources.length - 1;
 }
@@ -462,9 +460,7 @@ function readLabels(file: ini.Config) {
 }
 
 function valueOr(section: ini.Section, path: string, fallback: string) {
-	const value = ini.getValueByPath(section, path);
-	if (value == null) return fallback;
-	return value;
+	return ini.getValueByPath(section, path) ?? fallback;
 }
 
 /** YES, true, or a number other than 0. */
@@ -667,17 +663,11 @@ function viewerOf(id: number) {
 }
 
 function menuNamed(name: string) {
-	const known = find(name);
-	if (known != null) return known;
-	return register(name);
+	return find(name) ?? register(name);
 }
 
 function lookingAt(menu: Menu) {
-	const found: Player[] = [];
-	for (const player of Player.all()) {
-		if (viewerOf(player.id).menu == menu) found.push(player);
-	}
-	return found;
+	return Player.all().filter(player => viewerOf(player.id).menu == menu);
 }
 
 function words(text: string) {
@@ -689,10 +679,7 @@ function perPage(menu: Menu) {
 }
 
 function historyIndex(viewer: Viewer, menu: Menu) {
-	for (let i = 0; i < viewer.history.length; i++) {
-		if (viewer.history[i].menu == menu) return i;
-	}
-	return -1;
+	return viewer.history.findIndex(step => step.menu == menu);
 }
 
 function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptions) {
@@ -834,19 +821,12 @@ function addLine(screen: Screen, id: number, slot: number, text: string, enabled
 }
 
 function fixedAt(menu: Menu, slot: number) {
-	for (const item of menu.fixed) {
-		if (item.slot == slot) return item;
-	}
-	return null;
+	return menu.fixed.find(item => item.slot == slot);
 }
 
 /** The first variant whose condition holds; -1 when none does. */
 function variantFor(item: MenuItem, player: number, viewer: number) {
-	for (let i = 0; i < item.variants.length; i++) {
-		const condition = item.variants[i].condition;
-		if (condition.length == 0 || check(player, viewer, condition, false)) return i;
-	}
-	return -1;
+	return item.variants.findIndex(variant => variant.condition.length == 0 || check(player, viewer, variant.condition, false));
 }
 
 /** An item of an items menu, or a fixed one: its conditions and restrictions are the viewer's own. */
@@ -944,10 +924,7 @@ function drawRow(screen: Screen, id: number, viewer: Viewer, menu: Menu, templat
 
 /** The first restriction token that does not pass; "" when all do. */
 function restrictionFailure(player: number, target: number, restriction: string) {
-	for (const token of words(restriction)) {
-		if (!check(player, target, token, true)) return token;
-	}
-	return "";
+	return words(restriction).find(token => !check(player, target, token, true)) ?? "";
 }
 
 /** " message" for the failed restriction from "NAME:message|..." - or the one message there is. */
@@ -968,45 +945,32 @@ function listOf(viewer: Player, menu: Menu) {
 
 	if (given != null) {
 		listing.fromSource = true;
-		for (const row of given) {
-			if (row.kind == "text" || passesFilters(menu, row.target, viewer.id)) listing.rows.push(row);
-		}
+		listing.rows = given.filter(row => row.kind == "text" || passesFilters(menu, row.target, viewer.id));
 	} else if (menu.items.length > 0) {
-		for (const player of Player.all()) {
-			if (passesFilters(menu, player.id, viewer.id)) listing.rows.push(listRow(player.id, player.name));
-		}
+		listing.rows = Player.all()
+			.filter(player => passesFilters(menu, player.id, viewer.id))
+			.map(player => listRow(player.id, player.name));
 	}
 
-	for (const row of listing.rows) {
-		if (row.kind == "item") listing.count++;
-	}
+	listing.count = listing.rows.filter(row => row.kind == "item").length;
 	return listing;
 }
 
 function passesFilters(menu: Menu, target: number, viewer: number) {
-	for (const filter of menu.filters) {
-		if (!check(target, viewer, filter.condition, false)) return false;
-	}
-	return true;
+	return menu.filters.every(filter => check(target, viewer, filter.condition, false));
 }
 
 function sourceFor(menu: string) {
 	const upper = menu.toUpperCase();
-	for (const source of sources) {
-		if (source.menu.toUpperCase() == upper) return source;
-	}
-	return null;
+	return sources.find(source => source.menu.toUpperCase() == upper);
 }
 
 /** An empty list menu does not open: the player is told why - the filter nobody passes, or the first one. */
 function sayEmpty(player: Player, menu: Menu) {
 	for (const filter of menu.filters) {
-		let passing = 0;
-		for (const target of Player.all()) {
-			if (check(target.id, player.id, filter.condition, false)) passing++;
-		}
+		const passing = Player.all().some(target => check(target.id, player.id, filter.condition, false));
 
-		if (passing == 0 && filter.message.length > 0) {
+		if (!passing && filter.message.length > 0) {
 			say(player, filter.message);
 			return;
 		}
@@ -1070,33 +1034,21 @@ function goBack(player: Player, viewer: Viewer, menu: Menu) {
 
 function conditionNamed(name: string) {
 	const upper = name.toUpperCase();
-	for (const entry of conditions) {
-		if (entry.name.toUpperCase() == upper) return entry;
-	}
-	return null;
+	return conditions.find(entry => entry.name.toUpperCase() == upper);
 }
 
 function actionNamed(name: string) {
-	for (const entry of actions) {
-		if (entry.name == name) return entry;
-	}
-	return null;
+	return actions.find(entry => entry.name == name);
 }
 
 function restrictionNamed(name: string) {
 	const colon = name.indexOf(":");
 	const upper = (colon < 0 ? name : name.slice(0, colon)).toUpperCase();
-	for (const entry of restrictions) {
-		if (entry.name != "*" && entry.name.toUpperCase() == upper) return entry;
-	}
-	return null;
+	return restrictions.find(entry => entry.name != "*" && entry.name.toUpperCase() == upper);
 }
 
 function wildcardRestriction() {
-	for (const entry of restrictions) {
-		if (entry.name == "*") return entry;
-	}
-	return null;
+	return restrictions.find(entry => entry.name == "*");
 }
 
 /**
@@ -1154,18 +1106,8 @@ function isAccessCondition(name: string) {
 function hasAccess(player: Player, name: string) {
 	const access = player.access;
 	const upper = name.toUpperCase();
-	const wanted: Access[] = [];
-
-	if (upper == "ADMIN" || upper == "ACCESS_ADMIN") {
-		for (const each of ADMIN_ACCESS) wanted.push(each);
-	} else {
-		for (const each of accessOf(name.slice(5))) wanted.push(each);
-	}
-
-	for (const each of wanted) {
-		if (access.includes(each)) return true;
-	}
-	return false;
+	const wanted = upper == "ADMIN" || upper == "ACCESS_ADMIN" ? ADMIN_ACCESS : accessOf(name.slice(5));
+	return wanted.some(each => access.includes(each));
 }
 
 function actionAllowed(id: number, menu: string, action: string) {

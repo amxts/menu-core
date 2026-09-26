@@ -31,6 +31,16 @@ export default antfu(
 			"import/consistent-type-specifier-style": "off",
 			// Nor Number.parseInt and friends: parseInt is the global.
 			"unicorn/prefer-number-properties": "off",
+			// setTimeout takes no arguments for the handler here: what it needs
+			// it has from the variables around it (a closure).
+			"e18e/prefer-timer-args": "off",
+			// An object's properties cannot be enumerated at run time: the
+			// compiler refuses for...in, and the editor says so first. The first
+			// two are the base config's own.
+			"no-restricted-syntax": ["error", "TSEnumDeclaration[const=true]", "TSExportAssignment", {
+				selector: "ForInStatement",
+				message: "for...in is not supported: use for (const item of array), or a Map: for (const key of map.keys()).",
+			}],
 		},
 	},
 );
