@@ -13,14 +13,15 @@
 
 </div>
 
-Describe a menu once, in an ini file or in code, and Menu Core handles the rest: pages, keys, the way back, countdowns, and items that appear, disappear or grey out depending on who is looking.
+Describe a menu once, in a file — INI, YAML or JSON — or in code, and Menu Core handles the rest: pages, keys, the way back, countdowns, and items that appear, disappear or grey out depending on who is looking.
 
 > [!WARNING]
 > **In progress.** Menu Core has been tried in game only a few times, and its API may still change.
 
 ## Features
 
-- **Menus from a file or from code.** Admins edit `menu.ini` without touching a plugin; plugins add their own items at run time.
+- **Menus from a file or from code.** Admins edit `menu.ini`, `menu.yaml` or `menu.json` without touching a plugin; plugins add their own items at run time.
+- **Mistakes said where they are.** An unknown key, a value of the wrong kind, a condition or an action nobody registered: the server console says so, with the file and the line.
 - **Conditions and restrictions.** Show an item only when it applies (`IS_ALIVE`, `!IS_SPECTATOR`), or grey it out with a reason (`ADMIN`, `FLAG_abc`).
 - **Text that follows the player.** A title, an item or a message can be a function — ``(player) => `Heal (${player.health} HP)` `` — read each time the menu is drawn; in `menu.ini`, `%hp%`-style placeholders do the same.
 - **List menus.** A row per player or per item of your own list, with filters and a message when nothing is left.
@@ -41,8 +42,8 @@ Then add it to your project's `amxts.config.ts`:
 export default defineConfig({
 	modules: ["@amxts/menu-core"],
 	menus: {
-		file: "myserver/menu",   // configs/myserver/menu.ini
-		fallback: "menu",        // configs/menu.ini when the first one has no menus
+		file: "myserver/menu",   // configs/myserver/menu.ini, .yaml, .yml, .json or .jsonc
+		fallback: "menu",        // configs/menu.* when the first one is empty
 	},
 });
 ```
@@ -51,8 +52,8 @@ Menu Core reads its menus through [Config Core](https://github.com/amxts/config-
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `file` | `"menu"` | The menu file under `configs/`, without `.ini`. |
-| `fallback` | `""` | Read instead when `file` has no menus; `""` is none. |
+| `file` | `"menu"` | The menu file under `configs/`; without an extension, the first of `.ini`, `.yaml`, `.yml`, `.json` and `.jsonc` that is there. |
+| `fallback` | `""` | Read instead when `file` is empty or not there; `""` is none. |
 
 ## Usage
 
@@ -113,14 +114,74 @@ Its fields — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` 
 
 ## Menus in a file
 
-A menu is read from the file the first time it is asked for: by `register(name)`, or by `show` of a name Menu Core does not know yet.
+A menu is read from the file the first time it is asked for: by `register(name)`, or by `show` of a name Menu Core does not know yet. The file is INI, YAML or JSON: `menus: { file: "menu" }` reads the first of `menu.ini`, `menu.yaml`, `menu.yml`, `menu.json` and `menu.jsonc` that is there, and a menu means the same in each of them.
+
+```yaml
+# configs/menu.yaml
+chatPrefix: MYPLUGIN_CHAT_PREFIX   # chat prefix of the "nothing to list" message
+labels:
+  exit: MYPLUGIN_MENU_EXIT         # the buttons: a lang key or the text itself
+  number: MYPLUGIN_MENU_NUMBER     # "!y[%d]!w" unless the dictionary says otherwise
+
+menus:
+  MAIN_MENU:
+    title: MYPLUGIN_MENU_MAIN_TITLE
+    hideBack: true
+    items:
+      - name: MYPLUGIN_MENU_MAIN_ADMIN
+        condition: IS_ADMIN
+        action: SHOW_ADMIN_MENU
+        restriction: ADMIN
+      - variants:
+          - { name: MYPLUGIN_MENU_MAIN_SPECTATE, condition: "!IS_SPECTATOR", action: JOIN_SPECTATE }
+          - { name: MYPLUGIN_MENU_MAIN_JOIN, condition: IS_SPECTATOR, action: JOIN_TEAM }
+
+  LIST_SPECTATORS_MENU:
+    title: MYPLUGIN_MENU_SPECTATORS_TITLE
+    activeOn: IS_ROUND_RUNNING
+    filters:
+      - { condition: IS_SPECTATOR, message: MYPLUGIN_CHAT_NO_SPECTATORS }
+    view:
+      name: "%name%"
+      action: SWAP_WITH_SPECTATOR
+```
+
+```jsonc
+// configs/menu.json
+{
+  "chatPrefix": "MYPLUGIN_CHAT_PREFIX",
+  "labels": { "exit": "MYPLUGIN_MENU_EXIT", "number": "MYPLUGIN_MENU_NUMBER" },
+  "menus": {
+    "MAIN_MENU": {
+      "title": "MYPLUGIN_MENU_MAIN_TITLE",
+      "hideBack": true,
+      "items": [
+        { "name": "MYPLUGIN_MENU_MAIN_ADMIN", "condition": "IS_ADMIN", "action": "SHOW_ADMIN_MENU", "restriction": "ADMIN" },
+        {
+          "variants": [
+            { "name": "MYPLUGIN_MENU_MAIN_SPECTATE", "condition": "!IS_SPECTATOR", "action": "JOIN_SPECTATE" },
+            { "name": "MYPLUGIN_MENU_MAIN_JOIN", "condition": "IS_SPECTATOR", "action": "JOIN_TEAM" }
+          ]
+        }
+      ]
+    },
+    "LIST_SPECTATORS_MENU": {
+      "title": "MYPLUGIN_MENU_SPECTATORS_TITLE",
+      "activeOn": "IS_ROUND_RUNNING",
+      "filters": [{ "condition": "IS_SPECTATOR", "message": "MYPLUGIN_CHAT_NO_SPECTATORS" }],
+      "view": { "name": "%name%", "action": "SWAP_WITH_SPECTATOR" }
+    }
+  }
+}
+```
 
 ```ini
+; configs/menu.ini - as menu_core reads it
 [MAIN]
-PREFIX = MYPLUGIN_CHAT_PREFIX       ; chat prefix of the "nothing to list" message
+PREFIX = MYPLUGIN_CHAT_PREFIX
 KEY = {
-	EXIT = MYPLUGIN_MENU_EXIT       ; the buttons: a lang key or the text itself
-	NUMBER = MYPLUGIN_MENU_NUMBER   ; "!y[%d]!w" unless the dictionary says otherwise
+	EXIT = MYPLUGIN_MENU_EXIT
+	NUMBER = MYPLUGIN_MENU_NUMBER
 }
 
 [MAIN_MENU]
@@ -144,15 +205,46 @@ VIEW = {
 }
 ```
 
-- **Menu keys:** `TITLE`, `ACTIVE_ON` (the menu opens only while it holds), `HIDE_BACK`, `HIDE_EXIT`, `TIME` (a countdown in seconds), `ON_TIMEOUT` (the action when it ends), `LOCKED`, `GLOBAL` (one countdown for everyone).
-- **Variants:** `A|B` in a name, condition or action; the first whose condition holds is shown.
-- **Conditions:** `!NAME` turns one around; several names, space-separated, must all hold. `ADMIN` and `FLAG_<letters>` are answered from the player's access when nobody registered them; any other unknown condition does not hold.
+### The fields
+
+| YAML, JSON | INI | What it is |
+| --- | --- | --- |
+| `chatPrefix` | `[MAIN]` `PREFIX` | The chat prefix of Menu Core's messages. |
+| `labels`: `exit`, `back`, `next`, `number`, `disabled`, `page`, `time` | `[MAIN]` `KEY = { ... }` | The words of the buttons, the page and the countdown. |
+| `menus`: `{ NAME: menu }` | `[NAME]` | The menus; a name starting with `LIST_` is a list menu. |
+| `title` | `TITLE` | The title; a menu has one. |
+| `activeOn` | `ACTIVE_ON` | Conditions the menu opens only under. |
+| `hideBack` · `hideExit` | `HIDE_BACK` · `HIDE_EXIT` | `true` leaves the button out. |
+| `time` · `onTimeout` | `TIME` · `ON_TIMEOUT` | A countdown in seconds, and the actions run when it ends. |
+| `locked` · `sharedTimer` | `LOCKED` · `GLOBAL` | Items cannot be chosen; one countdown for everyone. |
+| `items` | `ITEMS` | An items menu's items. |
+| `fixedItems` | `FIXED_ITEMS` | Items that keep their `slot`, 1–7, on every page. |
+| `view` · `filters` | `VIEW` · `FILTER` | A list menu's row, and the filters its rows pass: `condition`, `message`. |
+
+An item — in `items`, `fixedItems` or as the `view` — has a `name`, and `placeholder` (text after the name), `condition` (greyed out without it), `action`, `restriction` and its `message`, `spaceBefore` and `spaceAfter` (blank lines). `variants: [{ name, condition, action }, ...]` gives an item several faces, the first whose condition holds shown — the `A|B` of INI, which YAML and JSON read too.
+
+A `condition`, `action`, `restriction`, `activeOn` or `onTimeout` is a name, several space-separated, or a list: `activeOn: [IS_ALIVE, "!IS_SPECTATOR"]`. In YAML, quote a value that starts with `!` or `%`.
+
+- **Variants:** the first whose condition holds is shown.
+- **Conditions:** `!NAME` turns one around; several names must all hold. `ADMIN` and `FLAG_<letters>` are answered from the player's access when nobody registered them; any other unknown condition does not hold.
 - **Built-in actions:** `SHOW_<MENU>` opens that menu, `CLOSE_MENU` closes; an action line may list several.
 - **Placeholders:** `%name%` (a list row's text), `%target%`, `%time%`, and any registered one.
-- **List menus** draw their `VIEW` row per player, or per row of their list source, leaving out rows that fail a `FILTER`. With none left the menu does not open, and the player gets the filter's message.
+- **List menus** draw their view per player, or per row of their list source, leaving out rows that fail a filter. With none left the menu does not open, and the player gets the filter's message.
 
 > [!TIP]
 > Colour codes in menus written for Pawn (`\y`, `\r`) still work, so an existing `menu.ini` can be used as it is.
+
+### Checks
+
+What does not fit a menu file is said in the server console with the file and the line — and the column in YAML and JSON — and left out; the rest of the menu is read.
+
+- **When the file is read:** an unknown key, with the one it may be; a value of the wrong kind (`hideBack: yes` — YAML's `yes` is text, the field takes `true`); a menu without a title, an item without a name, `items` in a list menu, a slot outside 1–7.
+- **On the server's first frame:** every condition, action, restriction and placeholder the file names that nobody registered — TypeScript plugins, Pawn plugins through the `mc_*` natives, or Menu Core itself. By then every plugin has run `plugin_init` and `plugin_cfg`, so a name a Pawn plugin registers after the file was read is not taken for a mistake. A file read later — `setConfigFile()` — is checked as it is read.
+
+```
+[MenuCore] addons/amxmodx/configs/menu.yaml:12:9: MAIN_MENU: the condition "IS_SPECTATR" is not registered - did you mean "IS_SPECTATOR"?
+[MenuCore] addons/amxmodx/configs/menu.yaml:14:9: MAIN_MENU: SHOW_ADMN_MENU opens the menu "ADMN_MENU", which is not there - did you mean "ADMIN_MENU"?
+```
 
 ## Pawn plugins
 
