@@ -24,11 +24,12 @@
 	},
 	"types": "./src/index.ts",
 	"files": [
-		"README.md",
-		"README.ru.md",
 		"PAWN.md",
 		"PAWN.ru.md",
+		"README.md",
+		"README.ru.md",
 		"include",
+		"scripts/docs",
 		"src"
 	],
 	"amxts": {

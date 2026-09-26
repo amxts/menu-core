@@ -129,6 +129,7 @@ export function indexOf(menu: Menu | null) {
 	return menu != null ? menus.indexOf(menu) : -1;
 }
 
+/** The menu at that place among all of them - the reverse of indexOf(); null when there is none. */
 export function menuAt(index: number) {
 	if (index < 0 || index >= menus.length) return null;
 	return menus[index];
@@ -177,7 +178,7 @@ export function addItem(menu: Menu, name: string, options: MenuItemOptions = {})
 	return true;
 }
 
-/** An item that always takes slot 1-7 of every page. */
+/** An item that takes the same slot on every page: `slot` is its key, 1 to 7. */
 export function addFixedItem(menu: Menu, slot: number, name: string, options: MenuItemOptions = {}) {
 	const item = itemOf(menu, name, options, slot - 1);
 	if (item == null) return false;
@@ -195,6 +196,7 @@ function itemOf(menu: Menu, name: string, options: MenuItemOptions, slot: number
 	return item;
 }
 
+/** Removes all items of the menu, fixed ones too. */
 export function clearItems(menu: Menu) {
 	menu.items = [];
 	menu.fixed = [];
@@ -264,6 +266,7 @@ export function setListSource(menu: string, rows: ListSource) {
 	return sources.length - 1;
 }
 
+/** Calls `listener` on every menu event of `type`: "open", "close", or "show" before a menu opens. */
 export function addEventListener(type: MenuEventType, listener: MenuListener) {
 	listeners.push({ type, listener });
 	return listeners.length - 1;
@@ -374,6 +377,7 @@ export function lock(player: Player, locked = true) {
 	viewerOf(player.id).locked = locked;
 }
 
+/** Whether the player's menu is locked - see lock(). */
 export function isLocked(player: Player) {
 	return viewerOf(player.id).locked;
 }

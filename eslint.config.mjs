@@ -9,6 +9,15 @@ export default antfu(
 		markdown: false,
 	},
 	{
+		// The tooltips' words: an entry's en and ru are written alike, in
+		// backticks, so the two lines differ by the translation and not by
+		// their quotes (the amxts code-style skill, rule 29).
+		files: ["scripts/docs/**/*.ts"],
+		rules: {
+			"style/quotes": ["error", "backtick"],
+		},
+	},
+	{
 		rules: {
 			// console.log is how a plugin reports: it is the API.
 			"no-console": "off",

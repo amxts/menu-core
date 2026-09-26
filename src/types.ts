@@ -31,7 +31,7 @@ export interface MenuItem {
 	spaceBefore: number;
 	/** Blank lines after it. */
 	spaceAfter: number;
-	/** The slot a fixed item always takes, 0-6; -1 for an item in the flow. */
+	/** The slot a fixed item always takes, counted from 0: key 1 is 0, key 7 is 6. -1 for an item in the flow. */
 	slot: number;
 }
 
@@ -141,15 +141,25 @@ export type ActionTest = (player: Player, menu: string, action: string) => boole
 export type ConditionFilter = (player: Player, viewer: Player, name: string, value: boolean) => boolean;
 /** The rows of a list menu; null lists the players instead. */
 export type ListSource = (viewer: Player, menu: string) => ListRow[] | null;
+/** What addEventListener() calls on a menu event. */
 export type MenuListener = (event: MenuEvent) => void;
 
 /** "open" and "close" as they happen; "show" before a menu opens, to stop it. */
 export type MenuEventType = "open" | "close" | "show";
 
+/** A menu event: the `player`, the `menu` name, and on "close" whether its `timeout` ran out. */
 export class MenuEvent {
+	/** Whether preventDefault() was called. */
 	defaultPrevented = false;
 
-	constructor(public player: Player, public menu: string, public timeout: boolean) {}
+	constructor(
+		/** Whose menu it is. */
+		public player: Player,
+		/** The menu's name. */
+		public menu: string,
+		/** On "close": the menu closed because its time ran out. */
+		public timeout: boolean,
+	) {}
 
 	/** On "show": the menu does not open. */
 	preventDefault() {
