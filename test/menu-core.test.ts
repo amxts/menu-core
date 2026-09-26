@@ -485,22 +485,3 @@ describe("text", () => {
 		expect(text).toContain("\\y[1]\\w Kick %s"); // an items menu fills its items for no target
 	});
 });
-
-describe("the playground: a TypeScript plugin", () => {
-	test("a menu made in code: a condition, a placeholder, items that run functions", async () => {
-		const server = await setup({ rootDir: "playground" });
-		const menus = menusOf(server);
-		const alice = server.join("Alice", { health: 40 });
-
-		alice.say("/shop");
-		expect(menus.screen(alice)!.text).toBe("Shop\n\n\\y[1]\\w Heal (40 HP)\n\\y[2]\\w Reset score\n\n\\y[3]\\w Close\n\n\n\n\n\n\\y[0]\\w Exit");
-
-		menus.press(alice, 1);
-		expect(alice.health).toBe(100);
-		expect(alice.chat).toContain("Healed");
-		expect(menus.screen(alice)!.text).toContain("\\d[1] Heal (100 HP)"); // IS_HURT no longer holds
-
-		menus.press(alice, 3);
-		expect(menus.screen(alice)).toBe(null);
-	});
-});

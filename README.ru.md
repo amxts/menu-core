@@ -60,25 +60,24 @@ Menu Core читает меню через [Config Core](https://github.com/amxt
 import { server } from "@amxts/core";
 import * as menus from "@amxts/menu-core";
 
-menus.addCondition("IS_HURT", (player) => player.health < 100);
-menus.addPlaceholder("hp", (player) => `${player.health}`);
+const shop = menus.create("SHOP", { title: "Магазин" });
+shop.addPlaceholder("hp", (player) => `${player.health}`);
 
-const shop = menus.create("SHOP", "Магазин");
-menus.addItem(shop, "Лечение (%hp% HP)", {
-	condition: "IS_HURT",
+shop.addItem("Лечение (%hp% HP)", {
+	visible: (player) => player.health < 100,
 	onSelect: (player) => {
 		player.health = 100;
 	},
 });
-menus.addItem(shop, "Сбросить счёт", {
+shop.addItem("Сбросить счёт", {
 	onSelect: (player) => {
 		player.frags = 0;
 	},
 });
-menus.addItem(shop, "Закрыть", { action: "CLOSE_MENU", spaceBefore: 1 });
+shop.addItem("Закрыть", { action: "CLOSE_MENU", spaceBefore: 1 });
 
 server.addCommand("/shop", (player) => {
-	menus.show(player, "SHOP");
+	shop.show(player);
 });
 ```
 
@@ -88,23 +87,29 @@ server.addCommand("/shop", (player) => {
 
 ### API
 
+Меню — объект: `menus.create()` его делает, а методы наполняют и открывают.
+
+| Метод | Что делает |
+| --- | --- |
+| `menu.addItem(text, options?)` | Добавляет пункт. Опции: `onSelect`, `visible` (пункта нет, пока отвечает «нет»), `enabled` (пункт серый, пока отвечает «нет») с `message`, `at`, `spaceBefore`, `spaceAfter` — и имена из menu.ini `condition`, `action`, `restriction`, `restrictionMessage`, `placeholder`. |
+| `menu.addFixedItem(slot, text, options?)` | Пункт, который на каждой странице занимает слот 1–7. |
+| `menu.addPlaceholder(name, value)` | Во что превращается `%name%` в этом меню. |
+| `menu.addFilter(test, message?)` | Меню-список пропускает строки, на которые `test` отвечает «нет». |
+| `menu.setListSource(rows)` | Свои строки меню-списка: `listRow(target, text)`, `textRow(text)`. |
+| `menu.addEventListener("open" \| "close" \| "show", listener)` | События этого меню; `"show"` приходит до открытия, `event.preventDefault()` его отменяет. |
+| `menu.show(player, options?)` | Открывает меню; `false`, если оно не открылось. Опции: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
+| `menu.refresh()` · `menu.close()` · `menu.clearItems()` | Перерисовать или закрыть у всех, кто его смотрит; убрать пункты. |
+| `menu.setTimer(seconds)` · `menu.cancelTimer()` | Общий отсчёт для всех, кто его смотрит. |
+
+Его поля — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` — задаются напрямую; `name`, `kind` и `countdown` читаются.
+
 | Функция | Что делает |
 | --- | --- |
-| `create(name, title)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. |
-| `register(name)` | Заранее загружает меню из файла. |
-| `addItem(menu, name, options?)` | Добавляет пункт. Опции: `placeholder`, `condition`, `action` или `onSelect`, `restriction`, `restrictionMessage`, `at`, `spaceBefore`, `spaceAfter`. |
-| `addFixedItem(menu, slot, name, options?)` | Пункт, который на каждой странице занимает слот 1–7. |
-| `addCondition(name, test)` | Когда пункт показывается. |
-| `addAction(name, handler)` | Что делает пункт, названный в файле. |
-| `addPlaceholder(name, value)` | Во что превращается `%name%`. |
-| `addRestriction(name, test, message?)` | Когда пункт серый и почему. |
-| `setListSource(name, rows)` | Строки меню-списка: `listRow(target, text)`, `textRow(text)`. |
-| `addEventListener("open" \| "close" \| "show", listener)` | `"show"` приходит до открытия меню; `event.preventDefault()` его отменяет. |
-| `show(player, name, options?)` | Открывает меню; `false`, если оно не открылось. Опции: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
-| `close(player)` · `refresh("A B")` · `conditionChanged(name)` | Закрыть, перерисовать названные меню, перерисовать то, что зависит от условия. |
-| `lock(player)` · `setTimer(menu, seconds)` · `cancelTimer(menu)` | Блокировка и отсчёт. |
-
-Меню — обычный объект `Menu`: поля вроде `hideExit`, `locked` и `time` задаются напрямую.
+| `create(name, options?)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. Опции: `title`, `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
+| `find(name)` · `register(name)` | Меню по имени; `register` заранее читает его из файла. |
+| `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | Меню игрока, какое бы оно ни было. |
+| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | То, что называют menu.ini и Pawn-плагины, — ответы функциями. |
+| `setListSource(name, rows)` · `refresh("A B")` · `conditionChanged(name)` · `addEventListener(type, listener)` | То же для меню по имени и события всех меню. |
 
 ## Меню в файле
 

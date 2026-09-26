@@ -1,177 +1,126 @@
 /**
- * The types of Menu Core's API: menus, items, rows and the callbacks plugins
+ * The types of Menu Core's API: options, rows and the callbacks plugins
  * register.
  */
-import { Player } from "~/facade";
+import { Player } from "@amxts/core";
 
-/** "items": a list of items. "list": a row per player, or per row a list source gives. */
+/** A menu's kind, one of "items" (a list of items) or "list" (a row per player, or per row of a list source). */
 export type MenuKind = "items" | "list";
 
-/** One way an item can look: shown when its condition holds, the first that does. */
-export interface Variant {
-	/** The text shown: a lang key or the text itself. */
-	name: string;
-	/** The condition it is shown under; "" is always. */
-	condition: string;
-	/** What choosing it does: a registered action or a built-in one. */
-	action: string;
-}
-
-/** An item of a menu. */
-export interface MenuItem {
-	/** The ways it can look - "A|B" in menu.ini - the first whose condition holds is shown. */
-	variants: Variant[];
-	/** Text after the name, placeholders and all: "%hp%". */
-	placeholder: string;
-	/** Restriction names, space-separated: the item is greyed out unless each passes. */
-	restriction: string;
-	/** Why it is greyed out: "NAME:message|NAME2:message", or one message. */
-	restrictionMessage: string;
-	/** Blank lines before it. */
-	spaceBefore: number;
-	/** Blank lines after it. */
-	spaceAfter: number;
-	/** The slot a fixed item always takes, counted from 0: key 1 is 0, key 7 is 6. -1 for an item in the flow. */
-	slot: number;
-}
-
-/** Rows of a list menu that fail the condition are left out; `message` says so when none is left. */
-export interface ListFilter {
-	/** The condition a row must pass. */
-	condition: string;
-	/** What the player is told when no row passes. */
-	message: string;
-}
-
-/** A menu, from menu.ini or made in code. */
-export interface Menu {
-	/** Its section name: "MAIN_MENU". */
-	name: string;
-	/** The title: a lang key or the text itself. */
-	title: string;
-	/** "items", or "list" - a row per player or per row of a list source. */
-	kind: MenuKind;
-	/** The menu opens only while this condition holds. */
-	activeOn: string;
-	/** A list menu's filters: rows that fail one are left out. */
-	filters: ListFilter[];
-	/** The items in the flow; a list menu's first one is its row template (VIEW). */
-	items: MenuItem[];
-	/** Items that keep their slot on every page (FIXED_ITEMS). */
-	fixed: MenuItem[];
-	/** No "Back" button. */
-	hideBack: boolean;
-	/** No "Exit" button. */
-	hideExit: boolean;
-	/** Items cannot be chosen, and no other menu replaces it. */
-	locked: boolean;
-	/** One countdown for everyone looking at it, rather than one each. */
-	sharedTimer: boolean;
-	/** Seconds on the countdown when it opens; 0 for none. */
-	time: number;
-	/** The action run when the countdown ends; without one the menu closes. */
-	onTimeout: string;
-	/** Seconds left on the shared countdown; 0 while none runs. */
-	countdown: number;
-}
-
-/** A row of a list menu, as a list source gives it. */
+/** A row of a list menu, as a list source gives it - made with `listRow()` or `textRow()`. */
 export interface ListRow {
-	/** "text": a line of text, not a choice. */
+	/** The row's kind, one of "item" (a row to choose) or "text" (a line of text, not a choice). */
 	kind: "item" | "text";
-	/** What the action gets as its target: a player id, an entity, an index. */
+	/** The row's target, handed to the action: e.g. a player's id, an entity or an index of the source's own. */
 	target: number;
-	/** The row's text, or %name% in the VIEW template. */
+	/** The row's text, put for %name% in the menu's row template. */
 	text: string;
-	/** An action of its own, instead of the template's. */
+	/** Action names of the row's own, run instead of the template's; "" for the template's. */
 	action: string;
 	/** Restriction names, space-separated: the row is greyed out unless each passes. */
 	restriction: string;
-	/** Why it is greyed out; "" is the restriction's own message. */
+	/** The text beside the row while it is greyed out; "" for the restriction's own message. */
 	restrictionMessage: string;
 }
 
-/** How `menus.show` opens a menu: `menus.show(player, "SHOP", { time: 10 })`. Every field may be left out. */
-export interface MenuShowOptions {
-	/** Seconds on the countdown; left out, the one running goes on, or the menu's TIME starts. */
+/**
+ * The options of a menu made with `create()`. Every field may be left out:
+ *
+ *     menus.create("SHOP", { title: "Shop", time: 30, activeWhen: player => player.isAlive });
+ */
+export interface MenuOptions {
+	/** The menu's title: a lang key or the text itself; left out, the menu's name. */
+	title?: string;
+	/** Seconds on the countdown when the menu opens, e.g. 10; left out, none. */
 	time?: number;
-	/** Who the menu is about: %target%, and the target an action gets; 0 when left out. */
+	/** Hiding of the "Back" button: true leaves it out. */
+	hideBack?: boolean;
+	/** Hiding of the "Exit" button: true leaves it out. */
+	hideExit?: boolean;
+	/** A lock on the menu: while true, items cannot be chosen and no other menu replaces this one. */
+	locked?: boolean;
+	/** A test the menu opens under: while it says no to the player, the menu does not open for him. */
+	activeWhen?: (player: Player) => boolean;
+}
+
+/**
+ * The options of showing a menu. Every field may be left out:
+ *
+ *     shop.show(player, { time: 10 });
+ */
+export interface MenuShowOptions {
+	/** Seconds on the countdown; left out, the countdown running goes on, or the menu's own starts. */
+	time?: number;
+	/** The player the menu is about, by id: %target%, and the target an action gets; 0 when left out. */
 	target?: number;
-	/** Starts the way back anew. */
+	/** A new way back: true forgets the menus this one was opened from. */
 	resetHistory?: boolean;
-	/** Opens over a menu that holds on: a countdown, or locked. */
+	/** Opening over a menu that holds on - a countdown, a lock: true opens anyway. */
 	force?: boolean;
-	/** Leaves the menu out of the way back. */
+	/** Leaving the menu out of the way back: true does not remember it. */
 	skipHistory?: boolean;
 }
 
-/** What `menus.addItem` takes besides the name. Every field may be left out. */
+/**
+ * The options of an item, besides its text. Every field may be left out:
+ *
+ *     shop.addItem("Heal", {
+ *         visible: player => player.health < 100,
+ *         onSelect: (player) => { player.health = 100; },
+ *     });
+ */
 export interface MenuItemOptions {
-	/** Text after the name, placeholders and all: "%hp%". */
+	/** The function run when the item is chosen: the player who chose it, and the target - the row's in a list menu, else the menu's. */
+	onSelect?: (player: Player, target: number) => void;
+	/** A test the item is shown under: while it says no, the item is left out and takes no slot. */
+	visible?: (player: Player, target: number) => boolean;
+	/** A test the item can be chosen under: while it says no, the item is greyed out. */
+	enabled?: (player: Player, target: number) => boolean;
+	/** The text beside the item while `enabled` greys it out, e.g. "(full)". */
+	message?: string;
+	/** The text after the item's name, placeholders and all, e.g. "%hp%". */
 	placeholder?: string;
-	/** The condition it is shown under - a name from addCondition, "!NAME" for its opposite, several space-separated must all hold. */
+	/** Condition names from `addCondition()` the item is greyed out without; "!NAME" for the opposite; several, space-separated, must all hold. */
 	condition?: string;
-	/** What choosing it does - a name from addAction, or a built-in: "SHOW_<MENU>", "CLOSE_MENU". */
+	/** Action names from `addAction()` run when the item is chosen, or a built-in one: "SHOW_<MENU>", "CLOSE_MENU". */
 	action?: string;
-	/** What choosing it does, instead of naming an action. */
-	onSelect?: (player: Player, target: number, name: string) => void;
-	/** Greys it out while it holds - a name from addRestriction, "ADMIN" or "FLAG_<letters>". */
+	/** Restriction names from `addRestriction()`, "ADMIN" or "FLAG_<letters>": the item is greyed out unless each passes. */
 	restriction?: string;
-	/** Shown beside it while it is greyed out; left out, the restriction's own message. */
+	/** The text beside the item while a restriction greys it out - one message for any, or one per restriction as in "NAME:message|NAME2:message". */
 	restrictionMessage?: string;
-	/** Its place among the items; left out, the end. */
+	/** The item's place among the items, from 0; left out, the end. */
 	at?: number;
-	/** Blank lines before it. */
+	/** Blank lines before the item. */
 	spaceBefore?: number;
-	/** Blank lines after it. */
+	/** Blank lines after the item. */
 	spaceAfter?: number;
 }
 
-/** Whether a condition holds. In a list menu `player` is the row's player and `viewer` whoever looks. */
+/** A condition's test, as `addCondition()` registers it. In a list menu `player` is the row's player and `viewer` whoever looks. */
 export type ConditionTest = (player: Player, viewer: Player, name: string) => boolean;
-/** What choosing an item does. `target` is the row's in a list menu, else the menu's. */
+/** An action, as `addAction()` registers it: `target` is the row's in a list menu, else the menu's. */
 export type ActionHandler = (player: Player, target: number, name: string) => void;
-/** The text a %name% stands for. */
+/** A placeholder's value: the text %name% stands for. */
 export type PlaceholderValue = (player: Player, target: number, name: string) => string;
-/** Whether a player passes a restriction; `name` is the whole token, "NAME:param" included. */
+/** A restriction's test, as `addRestriction()` registers it; `name` is the whole token, "NAME:param" included. */
 export type RestrictionTest = (player: Player, name: string, target: number) => boolean;
-/** Whether an item with this action may be chosen now; false greys it out. */
+/** A test of an item's action, as `addActionCheck()` registers it: false greys the item out. */
 export type ActionTest = (player: Player, menu: string, action: string) => boolean;
-/** Another say on a condition someone else registered: gets its value, returns the one to use. */
+/** A filter over a condition someone else registered: gets its value and returns the one to use. */
 export type ConditionFilter = (player: Player, viewer: Player, name: string, value: boolean) => boolean;
-/** The rows of a list menu; null lists the players instead. */
+/** A test of a row of a list menu, as `addFilter()` takes it: `player` is the row's player, `viewer` whoever looks. */
+export type RowTest = (player: Player, viewer: Player) => boolean;
+/** A list source: the rows of a list menu for the player who looks; null lists the players instead. */
 export type ListSource = (viewer: Player, menu: string) => ListRow[] | null;
-/** What addEventListener() calls on a menu event. */
-export type MenuListener = (event: MenuEvent) => void;
 
-/** "open" and "close" as they happen; "show" before a menu opens, to stop it. */
+/** A menu event's type, one of "open" and "close" as they happen, or "show" before a menu opens, to stop it. */
 export type MenuEventType = "open" | "close" | "show";
-
-/** A menu event: the `player`, the `menu` name, and on "close" whether its `timeout` ran out. */
-export class MenuEvent {
-	/** Whether preventDefault() was called. */
-	defaultPrevented = false;
-
-	constructor(
-		/** Whose menu it is. */
-		public player: Player,
-		/** The menu's name. */
-		public menu: string,
-		/** On "close": the menu closed because its time ran out. */
-		public timeout: boolean,
-	) {}
-
-	/** On "show": the menu does not open. */
-	preventDefault() {
-		this.defaultPrevented = true;
-	}
-}
 
 /** Menu Core's options: `menus` in amxts.config.ts. */
 export interface MenuCoreOptions {
-	/** The menu file, from configs/: "menu" is configs/menu.ini, "myserver/menu" configs/myserver/menu.ini. */
+	/** The menu file, from configs/, without ".ini": e.g. "menu" is configs/menu.ini, "myserver/menu" configs/myserver/menu.ini. */
 	file: string;
-	/** Read instead when `file` has no menus: "menu" falls back to configs/menu.ini. "" is none. */
+	/** The file read instead when `file` has no menus, e.g. "menu" for configs/menu.ini; "" is none. */
 	fallback: string;
 }
 

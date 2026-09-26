@@ -14,6 +14,7 @@ import {
 	textCells,
 } from "@amxts/core/kit";
 import * as menus from "./index";
+import { addNamedFilter } from "./internal";
 
 plugin({ name: "Menu Core", version: "1.6.2", author: "kukson", description: "Menus from ini files: the mc_* natives" });
 
@@ -153,7 +154,7 @@ export function mc_show_menu(player: Player, section: string, time = -1, targetI
  */
 export function mc_set_menu_timer(section: string, time: number) {
 	const menu = menus.find(section);
-	return answer(menu != null && menus.setTimer(menu, time));
+	return answer(menu != null && menu.setTimer(time));
 }
 
 /** Draws again every menu that uses the condition, for whoever looks at it. */
@@ -220,7 +221,7 @@ export function mc_register_list_data_source(menuName: string, callback: string)
 export function mc_register_menu_open_callback(callback: string) {
 	const fn = publicOf(callback);
 	if (fn == null) return openCount - 1;
-	menus.addEventListener("open", event => fn.call().int(event.player.id).text(event.menu).run());
+	menus.addEventListener("open", event => fn.call().int(event.player.id).text(event.menu.name).run());
 	return openCount++;
 }
 
@@ -232,7 +233,7 @@ export function mc_register_menu_open_callback(callback: string) {
 export function mc_register_menu_close_callback(callback: string) {
 	const fn = publicOf(callback);
 	if (fn == null) return closeCount - 1;
-	menus.addEventListener("close", event => fn.call().int(event.player.id).text(event.menu).bool(event.timeout).run());
+	menus.addEventListener("close", event => fn.call().int(event.player.id).text(event.menu.name).bool(event.timeout).run());
 	return closeCount++;
 }
 
@@ -246,7 +247,7 @@ export function mc_register_show_filter(callback: string) {
 	if (fn == null) return showCount - 1;
 	// The first filter that says no stops the menu; the ones after it are not asked.
 	menus.addEventListener("show", (event) => {
-		if (!event.defaultPrevented && fn.call().int(event.player.id).text(event.menu).run() == 0) event.preventDefault();
+		if (!event.defaultPrevented && fn.call().int(event.player.id).text(event.menu.name).run() == 0) event.preventDefault();
 	});
 	return showCount++;
 }
@@ -254,7 +255,7 @@ export function mc_register_show_filter(callback: string) {
 /** Stops the menu's shared countdown and closes it for everyone. Returns 1, or 0 when none ran. */
 export function mc_cancel_menu_timer(section: string) {
 	const menu = menus.find(section);
-	return answer(menu != null && menus.cancelTimer(menu));
+	return answer(menu != null && menu.cancelTimer());
 }
 
 /** Locks (or unlocks) the player's menu: nothing can be chosen, and no other menu replaces it. */
@@ -317,7 +318,7 @@ export function mc_set_menu_property_string(section: string, property: MenuPrope
 	const menu = menus.find(section);
 	if (menu == null) return 0;
 	if (property == MenuProperty.MP_ON_TIMEOUT) menu.onTimeout = value;
-	else if (property == MenuProperty.MP_ACTIVE_ON) menus.setActiveOn(menu, value);
+	else if (property == MenuProperty.MP_ACTIVE_ON) menu.activeOn = value;
 	else if (property == MenuProperty.MP_FILTER) addFilter(menu, value);
 	else return 0;
 	return 1;
@@ -326,8 +327,8 @@ export function mc_set_menu_property_string(section: string, property: MenuPrope
 function addFilter(menu: menus.Menu, value: string) {
 	if (menu.kind != "list") return;
 	const pipe = value.indexOf("|");
-	if (pipe < 0) menus.addFilter(menu, value.trim());
-	else menus.addFilter(menu, value.slice(0, pipe).trim(), value.slice(pipe + 1).trim());
+	if (pipe < 0) addNamedFilter(menu.name, value.trim(), "");
+	else addNamedFilter(menu.name, value.slice(0, pipe).trim(), value.slice(pipe + 1).trim());
 }
 
 /**
@@ -339,7 +340,7 @@ function addFilter(menu: menus.Menu, value: string) {
 export function mc_add_menu_item(section: string, name: string, placeholder?: string, condition?: string, action?: string, restriction?: string, restrictMsg?: string, iPosition = -1, emptyBefore = 0, emptyAfter = 0) {
 	const menu = menus.find(section);
 	if (menu == null) return 0;
-	return answer(menus.addItem(menu, name, {
+	return answer(menu.addItem(name, {
 		placeholder,
 		condition,
 		action,
@@ -358,7 +359,7 @@ export function mc_add_menu_item(section: string, name: string, placeholder?: st
 export function mc_add_fixed_menu_item(section: string, slot: number, name: string, placeholder?: string, action?: string, condition?: string, restriction?: string, emptyBefore = 0, emptyAfter = 0) {
 	const menu = menus.find(section);
 	if (menu == null) return 0;
-	return answer(menus.addFixedItem(menu, slot, name, {
+	return answer(menu.addFixedItem(slot, name, {
 		placeholder,
 		action,
 		condition,
@@ -382,7 +383,7 @@ export function mc_add_list_text(aItems: number, text: string, centered = false)
 /** Removes every item of a menu, fixed ones too. Returns 1, or 0 when there is no such menu. */
 export function mc_clear_menu_items(section: string) {
 	const menu = menus.find(section);
-	if (menu != null) menus.clearItems(menu);
+	if (menu != null) menu.clearItems();
 	return answer(menu != null);
 }
 
@@ -392,7 +393,7 @@ export function mc_clear_menu_items(section: string) {
  */
 export function mc_create_menu(section: string, title: string) {
 	if (menus.find(section) != null) return 0;
-	menus.create(section, title);
+	menus.create(section, { title });
 	return 1;
 }
 

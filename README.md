@@ -60,25 +60,24 @@ Menu Core reads its menus through [Config Core](https://github.com/amxts/config-
 import { server } from "@amxts/core";
 import * as menus from "@amxts/menu-core";
 
-menus.addCondition("IS_HURT", (player) => player.health < 100);
-menus.addPlaceholder("hp", (player) => `${player.health}`);
+const shop = menus.create("SHOP", { title: "Shop" });
+shop.addPlaceholder("hp", (player) => `${player.health}`);
 
-const shop = menus.create("SHOP", "Shop");
-menus.addItem(shop, "Heal (%hp% HP)", {
-	condition: "IS_HURT",
+shop.addItem("Heal (%hp% HP)", {
+	visible: (player) => player.health < 100,
 	onSelect: (player) => {
 		player.health = 100;
 	},
 });
-menus.addItem(shop, "Reset score", {
+shop.addItem("Reset score", {
 	onSelect: (player) => {
 		player.frags = 0;
 	},
 });
-menus.addItem(shop, "Close", { action: "CLOSE_MENU", spaceBefore: 1 });
+shop.addItem("Close", { action: "CLOSE_MENU", spaceBefore: 1 });
 
 server.addCommand("/shop", (player) => {
-	menus.show(player, "SHOP");
+	shop.show(player);
 });
 ```
 
@@ -88,23 +87,29 @@ Text colours are written as tags: `!y` yellow, `!r` red, `!w` white, `!d` grey, 
 
 ### API
 
+A menu is an object: `menus.create()` makes one, and its methods fill and open it.
+
+| Method | What it does |
+| --- | --- |
+| `menu.addItem(text, options?)` | Adds an item. Options: `onSelect`, `visible` (left out while it says no), `enabled` (greyed out while it says no) with `message`, `at`, `spaceBefore`, `spaceAfter` — and the menu.ini names `condition`, `action`, `restriction`, `restrictionMessage`, `placeholder`. |
+| `menu.addFixedItem(slot, text, options?)` | An item that keeps slot 1–7 on every page. |
+| `menu.addPlaceholder(name, value)` | What `%name%` becomes in this menu. |
+| `menu.addFilter(test, message?)` | A list menu leaves out the rows `test` says no to. |
+| `menu.setListSource(rows)` | A list menu's own rows: `listRow(target, text)`, `textRow(text)`. |
+| `menu.addEventListener("open" \| "close" \| "show", listener)` | This menu's events; `"show"` comes before it opens, `event.preventDefault()` stops it. |
+| `menu.show(player, options?)` | Opens the menu; `false` when it does not open. Options: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
+| `menu.refresh()` · `menu.close()` · `menu.clearItems()` | Redraw it or close it for whoever looks at it; remove its items. |
+| `menu.setTimer(seconds)` · `menu.cancelTimer()` | The countdown everyone looking at it shares. |
+
+Its fields — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` — are set directly; `name`, `kind` and `countdown` are read.
+
 | Function | What it does |
 | --- | --- |
-| `create(name, title)` | A menu in code, or the existing one with that name. A name starting with `LIST_` makes a list menu. |
-| `register(name)` | Loads a menu from the file ahead of time. |
-| `addItem(menu, name, options?)` | Adds an item. Options: `placeholder`, `condition`, `action` or `onSelect`, `restriction`, `restrictionMessage`, `at`, `spaceBefore`, `spaceAfter`. |
-| `addFixedItem(menu, slot, name, options?)` | An item that keeps slot 1–7 on every page. |
-| `addCondition(name, test)` | When an item is shown. |
-| `addAction(name, handler)` | What an item named in the file does. |
-| `addPlaceholder(name, value)` | What `%name%` becomes. |
-| `addRestriction(name, test, message?)` | When an item is greyed out, and why. |
-| `setListSource(name, rows)` | The rows of a list menu: `listRow(target, text)`, `textRow(text)`. |
-| `addEventListener("open" \| "close" \| "show", listener)` | `"show"` comes before a menu opens; `event.preventDefault()` stops it. |
-| `show(player, name, options?)` | Opens a menu; `false` when it does not open. Options: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
-| `close(player)` · `refresh("A B")` · `conditionChanged(name)` | Close, redraw the named menus, redraw what depends on a condition. |
-| `lock(player)` · `setTimer(menu, seconds)` · `cancelTimer(menu)` | Locks and countdowns. |
-
-A menu is a plain `Menu` object: fields such as `hideExit`, `locked` and `time` are set directly.
+| `create(name, options?)` | A menu in code, or the existing one with that name. A name starting with `LIST_` makes a list menu. Options: `title`, `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
+| `find(name)` · `register(name)` | A menu by its name; `register` reads it from the file ahead of time. |
+| `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | The player's menu, whichever it is. |
+| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | What menu.ini and Pawn plugins name, answered by functions. |
+| `setListSource(name, rows)` · `refresh("A B")` · `conditionChanged(name)` · `addEventListener(type, listener)` | The same for menus by name, and every menu's events. |
 
 ## Menus in a file
 

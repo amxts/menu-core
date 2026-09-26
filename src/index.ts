@@ -6,9 +6,9 @@ import { Access, accessOf, Forward, Player, clearInterval, print, server, setInt
 import { publicFor, showMenu } from "@amxts/core/kit";
 import { GetLangTransKey, LookupLangKey, get_maxplayers, register_menucmd, register_menuid } from "~/natives";
 import * as ini from "@amxts/config-core";
-import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, Menu, MenuCoreOptions, MenuEvent, MenuEventType, MenuItem, MenuItemOptions, MenuListener, MenuShowOptions, PlaceholderValue, RestrictionTest, Variant } from "./types";
+import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuCoreOptions, MenuEventType, MenuItemOptions, MenuKind, MenuOptions, MenuShowOptions, PlaceholderValue, RestrictionTest, RowTest } from "./types";
 
-import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, ListenerEntry, Viewer, Listing, Screen, Labels } from "./internal";
+import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, Screen, Labels, MenuItem, Variant, addNamedFilter, stateOf } from "./internal";
 
 export * from "./types";
 
@@ -20,6 +20,171 @@ export default defineModule<MenuCoreOptions>({
 		setConfigFile(options.file, options.fallback);
 	},
 });
+
+/**
+ * A menu: read from menu.ini, or made with `create()`. The fields are what
+ * menu.ini sets; the methods fill the menu, open it and count it down.
+ *
+ *     const shop = menus.create("SHOP", { title: "Shop" });
+ *     shop.addItem("Heal", { onSelect: heal });
+ *     shop.show(player);
+ */
+export class Menu {
+	/** The menu's kind, one of "items" (a list of items) or "list" (a row per player, or per row of a list source). A name starting with LIST_ makes a list. */
+	readonly kind: MenuKind;
+	/** Hiding of the "Back" button: true leaves it out. */
+	hideBack = false;
+	/** Hiding of the "Exit" button: true leaves it out. */
+	hideExit = false;
+	/** A lock on the menu: while true, items cannot be chosen and no other menu replaces this one. */
+	locked = false;
+	/** One countdown for everyone looking at the menu (true), rather than one per player. */
+	sharedTimer = false;
+	/** Seconds on the countdown when the menu opens, e.g. 10; 0 for none. */
+	time = 0;
+	/** Action names run when the countdown ends, e.g. "CLOSE_MENU"; "" closes the menu. */
+	onTimeout = "";
+	/** Condition names the menu opens only under, space-separated, e.g. "IS_ALIVE !IS_SPECTATOR"; "" for always. */
+	activeOn = "";
+	/** Seconds left on the shared countdown; 0 while none runs. */
+	countdown = 0;
+
+	constructor(
+		/** The menu's name - its section in menu.ini, e.g. "MAIN_MENU". */
+		readonly name: string,
+		/** The menu's title: a lang key or the text itself. */
+		public title: string,
+	) {
+		this.kind = name.startsWith("LIST_") ? "list" : "items";
+	}
+
+	/**
+	 * Adds an item. "A|B" in the text, a condition or an action are variants:
+	 * the first whose condition holds is shown. False when the text gives none.
+	 */
+	addItem(text: string, options: MenuItemOptions = {}) {
+		const item = itemOf(this, text, options, -1);
+		if (item == null) return false;
+		const items = stateOf(this.name).items;
+		const at = options.at ?? -1;
+		if (at >= 0 && at < items.length) items.splice(at, 0, item);
+		else items.push(item);
+		return true;
+	}
+
+	/** Adds an item that takes the same slot on every page: `slot` is its key, 1 to 7. */
+	addFixedItem(slot: number, text: string, options: MenuItemOptions = {}) {
+		const item = itemOf(this, text, options, slot - 1);
+		if (item == null) return false;
+		stateOf(this.name).fixed.push(item);
+		return true;
+	}
+
+	/** Removes every item of the menu, fixed ones too. */
+	clearItems() {
+		const state = stateOf(this.name);
+		state.items = [];
+		state.fixed = [];
+	}
+
+	/** A filter of a list menu: rows `test` says no to are left out, and `message` is said when none is left. */
+	addFilter(test: RowTest, message?: string) {
+		stateOf(this.name).filters.push({ condition: "", test, message: message ?? "" });
+	}
+
+	/** A placeholder of this menu: the text %name% stands for, before the ones registered with `addPlaceholder()`. */
+	addPlaceholder(name: string, value: PlaceholderValue) {
+		stateOf(this.name).placeholders.push({ name, value });
+	}
+
+	/** The source of this list menu's rows, instead of the players. */
+	setListSource(rows: ListSource) {
+		setListSource(this.name, rows);
+	}
+
+	/** Calls `listener` on this menu's events of `type`, one of "open", "close" or "show" (before it opens). */
+	addEventListener(type: MenuEventType, listener: MenuListener) {
+		listeners.push({ type, listener, menu: this.name });
+	}
+
+	/**
+	 * Shows the menu to the player; false when it does not open - a "show"
+	 * listener stopped it, it is not active, or the player's menu holds on.
+	 */
+	show(player: Player, options: MenuShowOptions = {}) {
+		return show(player, this.name, options);
+	}
+
+	/** Draws the menu again for whoever looks at it; the number of players it was drawn for. */
+	refresh() {
+		return refresh(this.name);
+	}
+
+	/** Closes the menu for whoever looks at it. */
+	close() {
+		for (const player of lookingAt(this)) close(player);
+	}
+
+	/**
+	 * Sets the shared countdown: starts it when none runs, or changes the
+	 * seconds left - 0 stops it where it is. False when there is nothing to change.
+	 */
+	setTimer(seconds: number) {
+		if (this.countdown == 0 && seconds > 0) {
+			this.countdown = seconds;
+			this.sharedTimer = true;
+			startMenuTimer(this);
+			refresh(this.name);
+			return true;
+		}
+
+		if (this.countdown <= 0) return false;
+
+		this.countdown = seconds;
+		if (seconds <= 0) stopMenuTimer(this);
+		else refresh(this.name);
+		return true;
+	}
+
+	/** Stops the shared countdown and closes the menu for everyone looking at it. False when none ran. */
+	cancelTimer() {
+		if (this.countdown == 0) return false;
+		stopMenuTimer(this);
+		this.countdown = 0;
+		this.close();
+		return true;
+	}
+}
+
+/** A menu event: the `player`, the `menu`, and on "close" whether its `timeout` ran out. */
+export class MenuEvent {
+	/** A mark of `preventDefault()`: true once it was called. */
+	defaultPrevented = false;
+
+	constructor(
+		/** The player whose menu it is. */
+		public player: Player,
+		/** The menu the event is about. */
+		public menu: Menu,
+		/** On "close": true when the menu closed because its time ran out. */
+		public timeout: boolean,
+	) {}
+
+	/** On "show": keeps the menu from opening. */
+	preventDefault() {
+		this.defaultPrevented = true;
+	}
+}
+
+/** A listener of menu events, as `addEventListener()` calls it. */
+export type MenuListener = (event: MenuEvent) => void;
+
+interface ListenerEntry {
+	type: MenuEventType;
+	listener: MenuListener;
+	/** The menu it listens to, by name; "" for every one. */
+	menu: string;
+}
 
 const DEFAULTS: Labels = {
 	exit: "Exit",
@@ -39,14 +204,14 @@ const MAX_DEPTH = 5;
 const ALL_KEYS = 1023;
 const ADMIN_ACCESS: Access[] = ["Ban", "Rcon", "Admin", "Menu"];
 const KEY_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+/** What an item's `enabled` saying no is called where a restriction's name would be. */
+const NOT_ENABLED = "!ENABLED";
 
 const menus: Menu[] = [];
 const menuByName = new Map<string, Menu>();
 const viewers = new Map<number, Viewer>();
 /** The shared countdown's timer of each menu that has one running, by name. */
 const menuTimers = new Map<string, number>();
-/** Condition name -> the menus drawn with it, redrawn when it changes. */
-const conditionMenus = new Map<string, string[]>();
 
 const conditions: ConditionEntry[] = [];
 const actions: ActionEntry[] = [];
@@ -87,7 +252,7 @@ server.addEventListener("init", () => {
 server.addEventListener("putinserver", (event) => {
 	const viewer = viewerOf(event.player.id);
 	stopPlayerTimer(viewer);
-	viewer.menu = null;
+	viewer.menu = "";
 	viewer.history = [];
 	viewer.page = 0;
 	viewer.locked = false;
@@ -99,8 +264,8 @@ server.addEventListener("disconnected", (event) => {
 });
 
 /**
- * The file menus are read from, under configs/ and without ".ini"; read when a
- * menu is first asked for. `fallback` is read instead when `file` has no sections.
+ * Sets the file menus are read from, under configs/ and without ".ini"; read
+ * when a menu is first asked for. `fallback` is read instead when `file` has no sections.
  */
 export function setConfigFile(file: string, fallback?: string) {
 	configFile = file;
@@ -108,24 +273,24 @@ export function setConfigFile(file: string, fallback?: string) {
 	config = null;
 }
 
-/** A menu by its name; null when there is none - see register() for one in the file. */
+/** A menu by its name; null when there is none - `register()` reads one from the file. */
 export function find(name: string) {
 	if (!menuByName.has(name)) return null;
 	return menuByName.get(name);
 }
 
-/** A menu's place among all of them - what mc_get_active_menu gives Pawn; -1 for none. */
+/** A menu's number among all of them - the one Pawn plugins know it by; -1 for none. */
 export function indexOf(menu: Menu | null) {
 	return menu != null ? menus.indexOf(menu) : -1;
 }
 
-/** The menu at that place among all of them - the reverse of indexOf(); null when there is none. */
+/** The menu with that number among all of them - the reverse of `indexOf()`; null when there is none. */
 export function menuAt(index: number) {
 	if (index < 0 || index >= menus.length) return null;
 	return menus[index];
 }
 
-/** The menu of the file's [name] section, read now if it is not yet; null when it has none or no items. */
+/** The menu of the file's [name] section, read now if it is not yet; null when there is no such section or no items in it. */
 export function register(name: string) {
 	const known = find(name);
 	if (known != null) return known;
@@ -136,13 +301,15 @@ export function register(name: string) {
 	const title = ini.getValue(section, "TITLE");
 	if (title == null) return null;
 
-	const menu = newMenu(name, title);
+	const menu = new Menu(name, title);
 	readOptions(menu, section);
 	if (menu.kind == "list") readList(menu, section);
 	else readRows(menu, section, "ITEMS");
 	readFixed(menu, section);
 
-	if (menu.items.length + menu.fixed.length == 0) {
+	const state = stateOf(name);
+
+	if (state.items.length + state.fixed.length == 0) {
 		console.error(`[MenuSystem] ERROR: No items found for menu section '${name}'`);
 		return null;
 	}
@@ -150,74 +317,52 @@ export function register(name: string) {
 	return add(menu);
 }
 
-/** A menu made in code - or the one of that name already there. A name starting with LIST_ makes a list menu. */
-export function create(name: string, title: string) {
-	return find(name) ?? add(newMenu(name, title));
-}
-
 /**
- * An item. "A|B" in the name, the condition or the action are variants: the
- * first whose condition holds is shown. False when the name gives none.
+ * A menu made in code - or the one of that name already there, as it is. A
+ * name starting with LIST_ makes a list menu.
  */
-export function addItem(menu: Menu, name: string, options: MenuItemOptions = {}) {
-	const item = itemOf(menu, name, options, -1);
-	if (item == null) return false;
-	const at = options.at ?? -1;
-	if (at >= 0 && at < menu.items.length) menu.items.splice(at, 0, item);
-	else menu.items.push(item);
-	return true;
-}
+export function create(name: string, options: MenuOptions = {}) {
+	const known = find(name);
+	if (known != null) return known;
 
-/** An item that takes the same slot on every page: `slot` is its key, 1 to 7. */
-export function addFixedItem(menu: Menu, slot: number, name: string, options: MenuItemOptions = {}) {
-	const item = itemOf(menu, name, options, slot - 1);
-	if (item == null) return false;
-	menu.fixed.push(item);
-	return true;
+	const menu = new Menu(name, options.title ?? name);
+	menu.time = options.time ?? 0;
+	menu.hideBack = options.hideBack ?? false;
+	menu.hideExit = options.hideExit ?? false;
+	menu.locked = options.locked ?? false;
+	const activeWhen = options.activeWhen;
+	if (activeWhen != null) stateOf(name).activeWhen = activeWhen;
+	return add(menu);
 }
 
 /** The item addItem and addFixedItem add: in `slot`, -1 for the flow. */
-function itemOf(menu: Menu, name: string, options: MenuItemOptions, slot: number) {
-	const { placeholder = "", condition = "", restriction = "", restrictionMessage = "", spaceBefore = 0, spaceAfter = 0 } = options;
-	const item = makeItem(menu, name, placeholder, condition, actionOf(menu, options), restriction, restrictionMessage, slot);
+function itemOf(menu: Menu, text: string, options: MenuItemOptions, slot: number) {
+	const { placeholder = "", condition = "", restriction = "", restrictionMessage = "", message = "", spaceBefore = 0, spaceAfter = 0 } = options;
+	const item = makeItem(text, placeholder, condition, actionOf(menu, options), restriction, restrictionMessage, slot);
 	if (item == null) return null;
+	const visible = options.visible;
+	const enabled = options.enabled;
+	if (visible != null) item.visible = visible;
+	if (enabled != null) item.enabled = enabled;
+	item.message = message;
 	item.spaceBefore = spaceBefore;
 	item.spaceAfter = spaceAfter;
 	return item;
 }
 
-/** Removes all items of the menu, fixed ones too. */
-export function clearItems(menu: Menu) {
-	menu.items = [];
-	menu.fixed = [];
-}
-
-/** A list menu leaves out rows that fail `condition`; `message` is said when none is left. */
-export function addFilter(menu: Menu, condition: string, message?: string) {
-	if (condition.length == 0) return;
-	watchConditions(condition, menu.name);
-	menu.filters.push({ condition, message: message ?? "" });
-}
-
-/** The menu opens only while `condition` holds. */
-export function setActiveOn(menu: Menu, condition: string) {
-	menu.activeOn = condition;
-	if (condition.length > 0) watchCondition(condition, menu.name);
-}
-
-/** A condition the file names; the first one registered under a name is the one asked. */
+/** Registers a condition by name, for menu.ini and Pawn plugins; the first one registered under a name is the one asked. */
 export function addCondition(name: string, test: ConditionTest) {
 	conditions.push({ name, test });
 	return conditions.length - 1;
 }
 
-/** An action the file names; SHOW_<MENU> and CLOSE_MENU are built in. */
+/** Registers an action by name, for menu.ini and Pawn plugins; SHOW_<MENU> and CLOSE_MENU are built in. */
 export function addAction(name: string, run: ActionHandler) {
 	actions.push({ name, run });
 	return actions.length - 1;
 }
 
-/** What %name% stands for in titles and items. A name registered twice keeps the first. */
+/** Registers a placeholder: the text %name% stands for in titles and items. A name registered twice keeps the first. */
 export function addPlaceholder(name: string, value: PlaceholderValue) {
 	const known = placeholders.findIndex(entry => entry.name == name);
 	if (known >= 0) return known;
@@ -225,7 +370,7 @@ export function addPlaceholder(name: string, value: PlaceholderValue) {
 	return placeholders.length - 1;
 }
 
-/** A restriction items name; "*" answers for every name nothing else does. */
+/** Registers a restriction by name, for items to name; "*" answers for every name nothing else does. */
 export function addRestriction(name: string, test: RestrictionTest, message?: string) {
 	restrictions.push({ name, test, message: message ?? "" });
 	return restrictions.length - 1;
@@ -237,13 +382,13 @@ export function addActionCheck(menu: string, action: string, test: ActionTest) {
 	return actionChecks.length - 1;
 }
 
-/** Another say on the condition `name`, whoever registered it. */
+/** Registers a filter over the condition `name`, whoever registered it: it gets the condition's value and returns the one to use. */
 export function addConditionFilter(name: string, filter: ConditionFilter) {
 	conditionFilters.push({ name, filter });
 	return conditionFilters.length - 1;
 }
 
-/** The rows of the list menu `menu`, instead of the players; a second source replaces the first. */
+/** Sets the source of the rows of the list menu of that name, instead of the players; a second source replaces the first. */
 export function setListSource(menu: string, rows: ListSource) {
 	const known = sources.findIndex(source => source.menu == menu);
 
@@ -256,13 +401,13 @@ export function setListSource(menu: string, rows: ListSource) {
 	return sources.length - 1;
 }
 
-/** Calls `listener` on every menu event of `type`: "open", "close", or "show" before a menu opens. */
+/** Calls `listener` on every menu event of `type`, one of "open", "close" or "show" (before a menu opens). */
 export function addEventListener(type: MenuEventType, listener: MenuListener) {
-	listeners.push({ type, listener });
+	listeners.push({ type, listener, menu: "" });
 	return listeners.length - 1;
 }
 
-/** A row for a list source. */
+/** A row for a list source: its target, text, and optionally an action, a restriction and its message. */
 export function listRow(target: number, text: string, action?: string, restriction?: string, restrictionMessage?: string) {
 	const row: ListRow = { kind: "item", target, text, action: action ?? "", restriction: restriction ?? "", restrictionMessage: restrictionMessage ?? "" };
 	return row;
@@ -276,8 +421,9 @@ export function textRow(text: string, centered = false) {
 }
 
 /**
- * Shows a menu; false when it does not open - no such menu, a "show"
- * listener stopped it, ACTIVE_ON does not hold, or the player's menu holds on.
+ * Shows the menu of that name - one made in code, or one of the file;
+ * false when it does not open: no such menu, a "show" listener stopped it,
+ * it is not active, or the player's menu holds on.
  */
 export function show(player: Player, name: string, options: MenuShowOptions = {}) {
 	if (!player.isConnected) return false;
@@ -286,23 +432,23 @@ export function show(player: Player, name: string, options: MenuShowOptions = {}
 
 	const menu = menuNamed(name);
 	if (menu == null) return false;
-	if (!allowed(player, menu.name)) return false;
+	if (!allowed(player, menu)) return false;
 
-	const current = viewer.menu;
+	const current = viewer.menu.length > 0 ? find(viewer.menu) : null;
 
 	if (current != null && current != menu) {
 		if (!options.force && (viewer.timer > 0 || viewer.locked)) return false;
 		stopPlayerTimer(viewer);
 		viewer.timer = 0;
-		dispatch("close", player, current.name, false);
+		dispatch("close", player, current, false);
 	}
 
 	if (options.resetHistory) {
 		viewer.history = [];
-		viewer.menu = null;
+		viewer.menu = "";
 	}
 
-	if (menu.activeOn.length > 0 && !check(player.id, player.id, menu.activeOn, false)) {
+	if (!opensFor(player, menu)) {
 		close(player);
 		return false;
 	}
@@ -314,25 +460,25 @@ export function show(player: Player, name: string, options: MenuShowOptions = {}
 	return shown;
 }
 
-/** Closes the player's menu; `timeout` tells the "close" listeners it ran out. */
+/** Closes the player's menu; `timeout` tells the "close" listeners the time ran out. */
 export function close(player: Player, timeout = false) {
 	const viewer = viewerOf(player.id);
-	const menu = viewer.menu;
+	const menu = viewer.menu.length > 0 ? find(viewer.menu) : null;
 	if (menu == null) return;
 
 	stopPlayerTimer(viewer);
 	viewer.timer = 0;
 	viewer.locked = false;
-	viewer.menu = null;
+	viewer.menu = "";
 	viewer.page = 0;
 	viewer.target = 0;
 	viewer.history = [];
 
 	showMenu(player.id, 0, "\n", "");
-	dispatch("close", player, menu.name, timeout);
+	dispatch("close", player, menu, timeout);
 }
 
-/** Draws the menus again for whoever looks at them; `names` are space-separated. How many were drawn. */
+/** Draws the menus again for whoever looks at them; `names` are space-separated. The number of players they were drawn for. */
 export function refresh(names: string) {
 	let count = 0;
 	for (const name of words(names)) {
@@ -345,66 +491,37 @@ export function refresh(names: string) {
 	return count;
 }
 
-/** A condition's value changed: the menus drawn with it are drawn again. */
+/** Tells the menus a condition's value changed: the menus drawn with it are drawn again. */
 export function conditionChanged(name: string) {
-	if (!conditionMenus.has(name)) return;
-	refresh(conditionMenus.get(name).join(" "));
+	const using = menus.filter(menu => usesCondition(menu, name)).map(menu => menu.name);
+	if (using.length > 0) refresh(using.join(" "));
 }
 
 /** The menu the player looks at, or null. */
 export function activeMenu(player: Player) {
-	return viewerOf(player.id).menu;
+	const viewer = viewerOf(player.id);
+	return viewer.menu.length > 0 ? find(viewer.menu) : null;
 }
 
-/** What the player's menu shows, as it was last drawn; "" when none is open. */
+/** The text of the player's menu, as it was last drawn; "" when none is open. */
 export function shownText(player: Player) {
 	const viewer = viewerOf(player.id);
-	return viewer.menu != null ? viewer.text : "";
+	return viewer.menu.length > 0 ? viewer.text : "";
 }
 
-/** Stops the player choosing items - and other menus replacing this one - until unlocked or closed. */
+/** Locks the player's menu: no item can be chosen and no other menu replaces it until it is unlocked or closed. */
 export function lock(player: Player, locked = true) {
 	viewerOf(player.id).locked = locked;
 }
 
-/** Whether the player's menu is locked - see lock(). */
+/** Whether the player's menu is locked - see `lock()`. */
 export function isLocked(player: Player) {
 	return viewerOf(player.id).locked;
 }
 
-/** The page the player's menu is drawn at next. */
+/** Sets the page the player's menu is drawn at next, from 0. */
 export function setPage(player: Player, page: number) {
 	viewerOf(player.id).page = page;
-}
-
-/**
- * Sets the shared countdown of a menu: starts it when none runs, or changes
- * the seconds left - 0 stops it where it is. False when there is nothing to change.
- */
-export function setTimer(menu: Menu, seconds: number) {
-	if (menu.countdown == 0 && seconds > 0) {
-		menu.countdown = seconds;
-		menu.sharedTimer = true;
-		startMenuTimer(menu);
-		refresh(menu.name);
-		return true;
-	}
-
-	if (menu.countdown <= 0) return false;
-
-	menu.countdown = seconds;
-	if (seconds <= 0) stopMenuTimer(menu);
-	else refresh(menu.name);
-	return true;
-}
-
-/** Stops the shared countdown and closes the menu for everyone looking at it. False when none ran. */
-export function cancelTimer(menu: Menu) {
-	if (menu.countdown == 0) return false;
-	stopMenuTimer(menu);
-	menu.countdown = 0;
-	for (const player of lookingAt(menu)) close(player);
-	return true;
 }
 
 /** Whether an action of that name is registered. */
@@ -412,7 +529,7 @@ export function hasAction(name: string) {
 	return actionNamed(name) != null;
 }
 
-/** Runs an action line: space-separated actions, CLOSE_MENU and SHOW_<MENU> among them. */
+/** Runs an action line: space-separated action names, CLOSE_MENU and SHOW_<MENU> among them. */
 export function runActions(player: Player, line: string, target = 0) {
 	for (const name of words(line)) {
 		if (name == "CLOSE_MENU") {
@@ -476,7 +593,7 @@ function readOptions(menu: Menu, section: ini.Section) {
 		const word = ini.getValue(section, "ACTIVE_ON", i);
 		if (word != null) activeOn.push(word);
 	}
-	setActiveOn(menu, activeOn.join(" "));
+	menu.activeOn = activeOn.join(" ");
 
 	menu.hideBack = flag(section, "HIDE_BACK");
 	menu.hideExit = flag(section, "HIDE_EXIT");
@@ -505,31 +622,31 @@ function column(row: string[], index: number) {
 /** ITEMS: name, placeholder, condition, action, restriction, message, spacing. */
 function readRows(menu: Menu, section: ini.Section, key: string) {
 	for (const row of blockRows(section, key)) {
-		const item = makeItem(menu, column(row, 0), column(row, 1), column(row, 2), column(row, 3), column(row, 4), column(row, 5), -1);
+		const item = makeItem(column(row, 0), column(row, 1), column(row, 2), column(row, 3), column(row, 4), column(row, 5), -1);
 		if (item == null) continue;
 		setSpacing(item, column(row, 6));
-		menu.items.push(item);
+		stateOf(menu.name).items.push(item);
 	}
 }
 
 /** FILTER rows (condition, message) and the VIEW template (name, condition, action, restriction, message). */
 function readList(menu: Menu, section: ini.Section) {
-	for (const row of blockRows(section, "FILTER")) addFilter(menu, column(row, 0), column(row, 1));
+	for (const row of blockRows(section, "FILTER")) addNamedFilter(menu.name, column(row, 0), column(row, 1));
 
 	const views = blockRows(section, "VIEW");
 	if (views.length == 0) return;
 	const view = views[0];
-	const item = makeItem(menu, column(view, 0), "", column(view, 1), column(view, 2), column(view, 3), column(view, 4), -1);
-	if (item != null) menu.items.push(item);
+	const item = makeItem(column(view, 0), "", column(view, 1), column(view, 2), column(view, 3), column(view, 4), -1);
+	if (item != null) stateOf(menu.name).items.push(item);
 }
 
 /** FIXED_ITEMS: slot, name, placeholder, condition, action, restriction, message, spacing. */
 function readFixed(menu: Menu, section: ini.Section) {
 	for (const row of blockRows(section, "FIXED_ITEMS")) {
-		const item = makeItem(menu, column(row, 1), column(row, 2), column(row, 3), column(row, 4), column(row, 5), column(row, 6), toInt(column(row, 0)) - 1);
+		const item = makeItem(column(row, 1), column(row, 2), column(row, 3), column(row, 4), column(row, 5), column(row, 6), toInt(column(row, 0)) - 1);
 		if (item == null) continue;
 		setSpacing(item, column(row, 7));
-		menu.fixed.push(item);
+		stateOf(menu.name).fixed.push(item);
 	}
 }
 
@@ -544,26 +661,6 @@ function setSpacing(item: MenuItem, spacing: string) {
 
 	item.spaceBefore = parts.length > 0 ? toInt(parts[0]) : 0;
 	item.spaceAfter = parts.length > 1 ? toInt(parts[1]) : 0;
-}
-
-function newMenu(name: string, title: string) {
-	const menu: Menu = {
-		name,
-		title,
-		kind: name.startsWith("LIST_") ? "list" : "items",
-		activeOn: "",
-		filters: [],
-		items: [],
-		fixed: [],
-		hideBack: false,
-		hideExit: false,
-		locked: false,
-		sharedTimer: false,
-		time: 0,
-		onTimeout: "",
-		countdown: 0,
-	};
-	return menu;
 }
 
 function add(menu: Menu) {
@@ -628,28 +725,27 @@ function variantsOf(name: string, condition: string, action: string) {
 	return variants;
 }
 
-function makeItem(menu: Menu, name: string, placeholder: string, condition: string, action: string, restriction: string, message: string, slot: number) {
+function makeItem(name: string, placeholder: string, condition: string, action: string, restriction: string, message: string, slot: number) {
 	const variants = variantsOf(name, condition, action);
 	if (variants.length == 0) return null;
-	for (const variant of variants) watchConditions(variant.condition, menu.name);
-	const item: MenuItem = { variants, placeholder, restriction, restrictionMessage: message, spaceBefore: 0, spaceAfter: 0, slot };
+	const item: MenuItem = { variants, placeholder, restriction, restrictionMessage: message, visible: null, enabled: null, message: "", spaceBefore: 0, spaceAfter: 0, slot };
 	return item;
 }
 
-function watchConditions(condition: string, menu: string) {
-	for (const token of words(condition)) watchCondition(token.startsWith("!") ? token.slice(1) : token, menu);
-}
-
-function watchCondition(name: string, menu: string) {
-	if (name.length == 0 || menu.length == 0) return;
-	if (!conditionMenus.has(name)) conditionMenus.set(name, []);
-	const list = conditionMenus.get(name);
-	if (!list.includes(menu)) list.push(menu);
+/** Whether a condition line of the menu - ACTIVE_ON, a filter, an item's - names `name`. */
+function usesCondition(menu: Menu, name: string) {
+	const state = stateOf(menu.name);
+	const lines = [menu.activeOn];
+	for (const filter of state.filters) lines.push(filter.condition);
+	for (const item of state.items.concat(state.fixed)) {
+		for (const variant of item.variants) lines.push(variant.condition);
+	}
+	return lines.some(line => words(line).some(token => (token.startsWith("!") ? token.slice(1) : token) == name));
 }
 
 function viewerOf(id: number) {
 	if (!viewers.has(id)) {
-		const made: Viewer = { menu: null, page: 0, target: 0, history: [], slots: [], rows: 0, text: "", locked: false, timer: 0, ticker: 0, depth: 0 };
+		const made: Viewer = { menu: "", page: 0, target: 0, history: [], slots: [], rows: 0, text: "", locked: false, timer: 0, ticker: 0, depth: 0 };
 		viewers.set(id, made);
 	}
 
@@ -661,7 +757,7 @@ function menuNamed(name: string) {
 }
 
 function lookingAt(menu: Menu) {
-	return Player.all().filter(player => viewerOf(player.id).menu == menu);
+	return Player.all().filter(player => viewerOf(player.id).menu == menu.name);
 }
 
 function words(text: string) {
@@ -669,16 +765,33 @@ function words(text: string) {
 }
 
 function perPage(menu: Menu) {
-	return Math.max(1, PAGE_SLOTS - menu.fixed.length);
+	return Math.max(1, PAGE_SLOTS - stateOf(menu.name).fixed.length);
 }
 
 function historyIndex(viewer: Viewer, menu: Menu) {
-	return viewer.history.findIndex(step => step.menu == menu);
+	return viewer.history.findIndex(step => step.menu == menu.name);
+}
+
+/** Whether the menu opens for the player: its ACTIVE_ON holds, and its activeWhen says yes. */
+function opensFor(player: Player, menu: Menu) {
+	if (menu.activeOn.length > 0 && !check(player.id, player.id, menu.activeOn, false)) return false;
+	const test = stateOf(menu.name).activeWhen;
+	return test == null || test(player);
+}
+
+/** The items of an items menu the player is shown: those whose `visible` does not say no. */
+function shownItems(player: Player, viewer: Viewer, menu: Menu) {
+	return stateOf(menu.name).items.filter(item => isVisible(item, player, viewer.target));
+}
+
+function isVisible(item: MenuItem, player: Player, target: number) {
+	const test = item.visible;
+	return test == null || test(player, target);
 }
 
 function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptions) {
 	const id = player.id;
-	const previous = viewer.menu;
+	const previous = viewer.menu.length > 0 ? find(viewer.menu) : null;
 	const previousPage = viewer.page;
 	const returning = previous == menu;
 
@@ -696,7 +809,7 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 	// Left out, or -1: the countdown running goes on, or the menu's own starts.
 	const asked = options.time ?? -1;
 	if (asked != -1) stopPlayerTimer(viewer);
-	dispatch("open", player, menu.name, false);
+	dispatch("open", player, menu, false);
 	if (!returning) viewer.locked = menu.locked;
 
 	let timer = asked == -1 ? 0 : asked;
@@ -706,9 +819,10 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 	if (!returning && !options.skipHistory && back < 0) viewer.page = 0;
 
 	const listing = menu.kind == "list" ? listOf(player, menu) : noListing();
-	const total = menu.kind == "list" ? listing.count : menu.items.length;
+	const items = menu.kind == "list" ? noItems() : shownItems(player, viewer, menu);
+	const total = menu.kind == "list" ? listing.count : items.length;
 
-	if (menu.kind == "list" && total == 0 && menu.filters.length > 0) {
+	if (menu.kind == "list" && total == 0 && stateOf(menu.name).filters.length > 0) {
 		sayEmpty(player, menu);
 		return false;
 	}
@@ -723,8 +837,8 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 	const screen: Screen = { text: header(id, viewer, menu, timer, page, pages), keys: [], slots: [] };
 	for (let slot = 0; slot < PAGE_SLOTS; slot++) screen.slots.push({ action: "", target: 0 });
 
-	if (menu.kind == "list") drawList(screen, id, viewer, menu, listing, page);
-	else drawItems(screen, id, viewer, menu, page);
+	if (menu.kind == "list") drawList(screen, player, viewer, menu, listing, page);
+	else drawItems(screen, player, viewer, menu, items, page);
 
 	const canGoBack = viewer.history.length > 0 || remember;
 
@@ -746,8 +860,8 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 	// A locked menu with nothing to press still has to be a menu the client shows.
 	if (viewer.locked && screen.keys.length == 0) screen.keys.push(0);
 
-	if (remember && previous != null) viewer.history.push({ menu: previous, page: previousPage });
-	viewer.menu = menu;
+	if (remember && previous != null) viewer.history.push({ menu: previous.name, page: previousPage });
+	viewer.menu = menu.name;
 	viewer.slots = screen.slots;
 	viewer.text = screen.text;
 	showMenu(id, keyMask(screen.keys), screen.text, menu.name);
@@ -757,6 +871,11 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 function noListing() {
 	const listing: Listing = { rows: [], fromSource: false, count: 0 };
 	return listing;
+}
+
+function noItems() {
+	const items: MenuItem[] = [];
+	return items;
 }
 
 function startCountdown(viewer: Viewer, id: number, menu: Menu, timer: number, asked: number) {
@@ -815,7 +934,7 @@ function addLine(screen: Screen, id: number, slot: number, text: string, enabled
 }
 
 function fixedAt(menu: Menu, slot: number) {
-	return menu.fixed.find(item => item.slot == slot);
+	return stateOf(menu.name).fixed.find(item => item.slot == slot);
 }
 
 /** The first variant whose condition holds; -1 when none does. */
@@ -823,8 +942,15 @@ function variantFor(item: MenuItem, player: number, viewer: number) {
 	return item.variants.findIndex(variant => variant.condition.length == 0 || check(player, viewer, variant.condition, false));
 }
 
+/** NOT_ENABLED when the item's own `enabled` says no; "" otherwise. */
+function notEnabled(item: MenuItem, player: Player, target: number) {
+	const test = item.enabled;
+	return test != null && !test(player, target) ? NOT_ENABLED : "";
+}
+
 /** An item of an items menu, or a fixed one: its conditions and restrictions are the viewer's own. */
-function drawItem(screen: Screen, id: number, viewer: Viewer, menu: Menu, item: MenuItem, slot: number, target: number) {
+function drawItem(screen: Screen, player: Player, viewer: Viewer, menu: Menu, item: MenuItem, slot: number, target: number) {
+	const id = player.id;
 	screen.text += "\n".repeat(item.spaceBefore);
 
 	const found = variantFor(item, id, id);
@@ -833,37 +959,40 @@ function drawItem(screen: Screen, id: number, viewer: Viewer, menu: Menu, item: 
 	const text = fill(id, target, item.placeholder.length > 0 ? `${name} ${item.placeholder}` : name, "", menu);
 
 	let failed = restrictionFailure(id, id, item.restriction);
+	if (found >= 0 && failed.length == 0) failed = notEnabled(item, player, viewer.target);
 	if (found >= 0 && failed.length == 0 && !actionAllowed(id, menu.name, variant.action)) failed = "ACTION_CONDITION";
 
 	const enabled = found >= 0 && failed.length == 0 && !viewer.locked;
-	addLine(screen, id, slot, text, enabled, failed.length > 0 ? reasonFor(item.restrictionMessage, failed) : "");
+	addLine(screen, id, slot, text, enabled, failed.length > 0 ? reasonFor(item, failed) : "");
 	if (enabled) screen.slots[slot] = { action: variant.action, target: viewer.target };
 
 	screen.text += "\n".repeat(item.spaceAfter);
 }
 
-function drawItems(screen: Screen, id: number, viewer: Viewer, menu: Menu, page: number) {
+function drawItems(screen: Screen, player: Player, viewer: Viewer, menu: Menu, items: MenuItem[], page: number) {
 	let next = page * perPage(menu);
 	for (let slot = 0; slot < PAGE_SLOTS; slot++) {
 		const fixed = fixedAt(menu, slot);
 
 		if (fixed != null) {
-			drawItem(screen, id, viewer, menu, fixed, slot, 0);
+			if (isVisible(fixed, player, viewer.target)) drawItem(screen, player, viewer, menu, fixed, slot, 0);
+			else screen.text += "\n";
 			continue;
 		}
 
-		if (next >= menu.items.length) {
+		if (next >= items.length) {
 			screen.text += "\n";
 			continue;
 		}
 
-		drawItem(screen, id, viewer, menu, menu.items[next], slot, 0);
+		drawItem(screen, player, viewer, menu, items[next], slot, 0);
 		next++;
 	}
 }
 
-function drawList(screen: Screen, id: number, viewer: Viewer, menu: Menu, listing: Listing, page: number) {
-	const template = menu.items.length > 0 ? menu.items[0] : null;
+function drawList(screen: Screen, player: Player, viewer: Viewer, menu: Menu, listing: Listing, page: number) {
+	const items = stateOf(menu.name).items;
+	const template = items.length > 0 ? items[0] : null;
 	const rows = listing.rows;
 	const start = page * perPage(menu);
 	let drawn = 0;
@@ -872,7 +1001,8 @@ function drawList(screen: Screen, id: number, viewer: Viewer, menu: Menu, listin
 		const fixed = fixedAt(menu, slot);
 
 		if (fixed != null) {
-			drawItem(screen, id, viewer, menu, fixed, slot, viewer.target);
+			if (isVisible(fixed, player, viewer.target)) drawItem(screen, player, viewer, menu, fixed, slot, viewer.target);
+			else screen.text += "\n";
 			continue;
 		}
 
@@ -890,11 +1020,12 @@ function drawList(screen: Screen, id: number, viewer: Viewer, menu: Menu, listin
 		}
 
 		drawn++;
-		drawRow(screen, id, viewer, menu, template, rows[index], slot);
+		drawRow(screen, player, viewer, menu, template, rows[index], slot);
 	}
 }
 
-function drawRow(screen: Screen, id: number, viewer: Viewer, menu: Menu, template: MenuItem, row: ListRow, slot: number) {
+function drawRow(screen: Screen, player: Player, viewer: Viewer, menu: Menu, template: MenuItem, row: ListRow, slot: number) {
+	const id = player.id;
 	const found = variantFor(template, row.target, id);
 	const variant = template.variants[Math.max(0, found)];
 	const text = fill(id, row.target, variant.name, row.text, menu);
@@ -902,11 +1033,12 @@ function drawRow(screen: Screen, id: number, viewer: Viewer, menu: Menu, templat
 	let failed = "";
 	if (row.restriction.length > 0 && !check(id, row.target, row.restriction, true)) failed = row.restriction;
 	if (failed.length == 0) failed = restrictionFailure(id, row.target, template.restriction);
+	if (found >= 0 && failed.length == 0) failed = notEnabled(template, player, row.target);
 	if (found >= 0 && failed.length == 0 && !actionAllowed(id, menu.name, variant.action)) failed = "ACTION_CONDITION";
 
 	const enabled = found >= 0 && failed.length == 0 && !viewer.locked;
 	let reason = "";
-	if (!enabled) reason = row.restrictionMessage.length > 0 ? ` ${row.restrictionMessage}` : reasonFor(template.restrictionMessage, failed);
+	if (!enabled) reason = row.restrictionMessage.length > 0 ? ` ${row.restrictionMessage}` : reasonFor(template, failed);
 	addLine(screen, id, slot, text, enabled, reason);
 	if (!enabled) return;
 
@@ -921,9 +1053,15 @@ function restrictionFailure(player: number, target: number, restriction: string)
 	return words(restriction).find(token => !check(player, target, token, true)) ?? "";
 }
 
-/** " message" for the failed restriction from "NAME:message|..." - or the one message there is. */
-function reasonFor(messages: string, failed: string) {
-	for (const pair of pieces(messages)) {
+/**
+ * " message" beside an item greyed out by `failed`: its own message when
+ * `enabled` said no; else the one for the restriction from "NAME:message|...",
+ * the one message there is, or the restriction's own.
+ */
+function reasonFor(item: MenuItem, failed: string) {
+	if (failed == NOT_ENABLED) return item.message.length > 0 ? ` ${item.message}` : "";
+
+	for (const pair of pieces(item.restrictionMessage)) {
 		const colon = pair.indexOf(":");
 		if (colon < 0) return ` ${pair}`;
 		if (pair.slice(0, colon).trim() == failed) return ` ${pair.slice(colon + 1)}`;
@@ -940,7 +1078,7 @@ function listOf(viewer: Player, menu: Menu) {
 	if (given != null) {
 		listing.fromSource = true;
 		listing.rows = given.filter(row => row.kind == "text" || passesFilters(menu, row.target, viewer.id));
-	} else if (menu.items.length > 0) {
+	} else if (stateOf(menu.name).items.length > 0) {
 		listing.rows = Player.all()
 			.filter(player => passesFilters(menu, player.id, viewer.id))
 			.map(player => listRow(player.id, player.name));
@@ -951,7 +1089,15 @@ function listOf(viewer: Player, menu: Menu) {
 }
 
 function passesFilters(menu: Menu, target: number, viewer: number) {
-	return menu.filters.every(filter => check(target, viewer, filter.condition, false));
+	return stateOf(menu.name).filters.every(filter => passesFilter(filter.condition, filter.test, target, viewer));
+}
+
+/** A filter by condition names, or by its test with the row's player and whoever looks. */
+function passesFilter(condition: string, test: RowTest | null, target: number, viewer: number) {
+	if (test == null) return check(target, viewer, condition, false);
+	const row = new Player(target);
+	const looking = new Player(viewer);
+	return test(row, looking);
 }
 
 function sourceFor(menu: string) {
@@ -961,15 +1107,16 @@ function sourceFor(menu: string) {
 
 /** An empty list menu does not open: the player is told why - the filter nobody passes, or the first one. */
 function sayEmpty(player: Player, menu: Menu) {
-	for (const filter of menu.filters) {
-		const passing = Player.all().some(target => check(target.id, player.id, filter.condition, false));
+	const filters = stateOf(menu.name).filters;
+	for (const filter of filters) {
+		const passing = Player.all().some(target => passesFilter(filter.condition, filter.test, target.id, player.id));
 
 		if (!passing && filter.message.length > 0) {
 			say(player, filter.message);
 			return;
 		}
 	}
-	if (menu.filters[0].message.length > 0) say(player, menu.filters[0].message);
+	if (filters[0].message.length > 0) say(player, filters[0].message);
 }
 
 function say(player: Player, message: string) {
@@ -978,7 +1125,7 @@ function say(player: Player, message: string) {
 
 function pressed(player: Player, key: number) {
 	const viewer = viewerOf(player.id);
-	const menu = viewer.menu;
+	const menu = viewer.menu.length > 0 ? find(viewer.menu) : null;
 	if (menu == null) return;
 
 	if (key == 7) {
@@ -1004,7 +1151,7 @@ function pressed(player: Player, key: number) {
 	const slot = viewer.slots[key];
 	if (slot.action.length == 0) return;
 	runActions(player, slot.action, slot.target);
-	if (viewer.menu == menu) show(player, menu.name, { target: viewer.target });
+	if (viewer.menu == menu.name) show(player, menu.name, { target: viewer.target });
 }
 
 function goBack(player: Player, viewer: Viewer, menu: Menu) {
@@ -1019,7 +1166,7 @@ function goBack(player: Player, viewer: Viewer, menu: Menu) {
 	if (viewer.history.length > 0) {
 		const step = viewer.history.pop();
 		viewer.page = step.page;
-		show(player, step.menu.name, { skipHistory: true });
+		show(player, step.menu, { skipHistory: true });
 		return;
 	}
 
@@ -1115,19 +1262,24 @@ function actionAllowed(id: number, menu: string, action: string) {
 	return true;
 }
 
-function allowed(player: Player, menu: string) {
+/** Whether a listener hears an event: of its type, and of its menu when it has one. */
+function hears(entry: ListenerEntry, type: MenuEventType, menu: Menu) {
+	return entry.type == type && (entry.menu.length == 0 || entry.menu == menu.name);
+}
+
+function allowed(player: Player, menu: Menu) {
 	const event = new MenuEvent(player, menu, false);
 	for (const entry of listeners) {
-		if (entry.type == "show") entry.listener(event);
+		if (hears(entry, "show", menu)) entry.listener(event);
 		if (event.defaultPrevented) return false;
 	}
 	return true;
 }
 
-function dispatch(type: MenuEventType, player: Player, menu: string, timeout: boolean) {
+function dispatch(type: MenuEventType, player: Player, menu: Menu, timeout: boolean) {
 	const event = new MenuEvent(player, menu, timeout);
 	for (const entry of listeners) {
-		if (entry.type == type) entry.listener(event);
+		if (hears(entry, type, menu)) entry.listener(event);
 	}
 }
 
@@ -1160,25 +1312,24 @@ function ui(id: number, key: string, fallback: string) {
 	return looksLikeKey(key) ? fallback : key;
 }
 
-function secondsLeft(id: number, menu: Menu | null) {
+function secondsLeft(id: number, menu: Menu) {
 	const viewer = viewerOf(id);
-	if (viewer.timer > 0) return viewer.timer;
-	const shown = menu ?? viewer.menu;
-	return shown != null ? shown.countdown : 0;
+	return viewer.timer > 0 ? viewer.timer : menu.countdown;
 }
 
 /**
- * The text with its placeholders filled: %name% from `name`, registered
- * ones, %time%, and %target% (or %s) as the target's name.
+ * The text with its placeholders filled: %name% from `name`, the menu's own
+ * placeholders, then the registered ones, %time%, and %target% (or %s) as the
+ * target's name.
  */
-function fill(id: number, target: number, input: string, name: string, menu: Menu | null) {
+function fill(id: number, target: number, input: string, name: string, menu: Menu) {
 	let text = translate(id, input);
 	if (!text.includes("%")) return text;
 
 	if (name.length > 0 && text.includes("%name%")) text = text.replaceAll("%name%", translate(id, name));
 
 	const player = new Player(id);
-	for (const entry of placeholders) {
+	for (const entry of stateOf(menu.name).placeholders.concat(placeholders)) {
 		const tag = `%${entry.name}%`;
 		if (text.includes(tag)) text = text.replaceAll(tag, entry.value(player, target, entry.name));
 	}
@@ -1216,7 +1367,7 @@ function onPlayerSecond(viewer: Viewer, id: number) {
 	}
 
 	viewer.timer--;
-	const menu = viewer.menu;
+	const menu = viewer.menu.length > 0 ? find(viewer.menu) : null;
 
 	if (viewer.timer > 0) {
 		if (menu != null) show(player, menu.name, { target: viewer.target, skipHistory: true });
@@ -1226,7 +1377,7 @@ function onPlayerSecond(viewer: Viewer, id: number) {
 	stopPlayerTimer(viewer);
 	if (menu == null) return;
 	if (menu.onTimeout.length > 0) runActions(player, menu.onTimeout, viewer.target);
-	if (player.isConnected && viewer.menu == menu) close(player, true);
+	if (player.isConnected && viewer.menu == menu.name) close(player, true);
 }
 
 function startMenuTimer(menu: Menu) {
