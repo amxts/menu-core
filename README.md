@@ -289,9 +289,15 @@ A `visible`, `when`, `enabled`, `activeOn`, `action` or `onTimeout` is a name, s
 - **Placeholders:** `%name%` (a list row's text), `%target%`, `%time%`, and any registered one.
 - **List menus** draw their view per player, or per row of their list source, leaving out rows that fail a filter. With none left the menu does not open, and the player gets the filter's message.
 
-- **Flags** of an INI menu — `HIDE_BACK`, `HIDE_EXIT`, `LOCKED`, `GLOBAL` — are `YES` or `NO`.
-- **Text with spaces** in an INI menu is quoted: `TITLE = "Main menu"`. Unquoted, only its first word is read.
-- **Colours** are tags in a menu file too: `!y`, `!r`, `!d`, `!w`, `!R`. Text from Pawn — a Pawn plugin's items and titles, a lang dictionary — keeps its codes (`\y`), and Menu Core reads them as the tags.
+> [!WARNING]
+> **In a menu file:**
+>
+> - **Flags** of an INI menu — `HIDE_BACK`, `HIDE_EXIT`, `LOCKED`, `GLOBAL` — are `YES` or `NO`: `true`, `1` or `yes` is warned of, with the word to write, and is `NO`. In YAML `yes` is text: a flag there is `true` or `false`.
+> - **Text with spaces** in an INI menu is quoted: `TITLE = "Main menu"`. Unquoted, only its first word is read.
+> - **An item's name in YAML or JSON is not split on `|`:** its faces are written with `variants`.
+> - **Colours** are tags in a menu file too: `!y`, `!r`, `!d`, `!w`, `!R`. Pawn's codes (`\y`, `\r`) are warned of, with the tag to write, and left out. Text from Pawn — a Pawn plugin's items and titles, a lang dictionary — keeps its codes, and Menu Core reads them as the tags.
+> - **`%time%` and `%target%` are lower case:** `%TIME%` and `%s` are left as written.
+> - **`ADMIN` and `ACCESS_ADMIN` are not built in:** a plugin registers them, or the file writes `IS_ADMIN` (any admin) or `FLAG_<letters>` (`FLAG_d`).
 
 ### INI's columns
 
@@ -325,6 +331,9 @@ What does not fit a menu file is said in the server console with the file and th
 ### In the editor
 
 The amxts extension for VS Code checks a menu file as you type — the same checks, in the same words — and completes the keys and the names your plugins register (TypeScript, Pawn and installed modules), with hover and go to definition to the registration. A name added in a plugin is offered in the menu file at once, before the plugin is saved. It is not on the Marketplace yet: install its `.vsix` with `code --install-extension amxts-vscode-<version>.vsix`.
+
+> [!WARNING]
+> The extension knows only names written as a string in the workspace: `menus.addAction(name, ...)` with the name in a variable, and a name only a Pawn plugin on the server registers, are a warning in the editor. The server's check on its first frame is the one that counts.
 
 ## Pawn plugins
 
