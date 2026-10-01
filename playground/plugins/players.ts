@@ -10,7 +10,7 @@ players.addEventListener("close", (event) => {
 	if (event.timeout) print(event.player, "Too slow");
 });
 
-server.addCommand("/greet", (player) => {
+server.addCommand("/greet", ({ player }) => {
 	players.show(player, { time: 10 });
 });
 

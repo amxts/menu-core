@@ -93,7 +93,7 @@ shop.addItem("Reset score", {
 });
 shop.addItem("Close", { action: "CLOSE_MENU", spaceBefore: 1 });
 
-server.addCommand("/shop", (player) => shop.show(player));
+server.addCommand("/shop", ({ player }) => shop.show(player));
 ```
 
 Text — a title, an item, a message — is the text itself or a function that gives it for the player who looks. A plain string that is a lang key is translated for him.

@@ -93,7 +93,7 @@ shop.addItem("Сбросить счёт", {
 });
 shop.addItem("Закрыть", { action: "CLOSE_MENU", spaceBefore: 1 });
 
-server.addCommand("/shop", (player) => shop.show(player));
+server.addCommand("/shop", ({ player }) => shop.show(player));
 ```
 
 Текст — заголовок, пункт, сообщение — это сам текст или функция, которая даёт его для игрока, который смотрит. Обычная строка, если это ключ словаря, переводится для него.

@@ -33,6 +33,6 @@ shop.addItem("Helmet", {
 });
 shop.addItem("Close", { action: "CLOSE_MENU", spaceBefore: 1 });
 
-server.addCommand("/shop", (player) => {
+server.addCommand("/shop", ({ player }) => {
 	shop.show(player);
 });
