@@ -5,7 +5,7 @@
  */
 import { accessOf, Forward, Player, clearInterval, lang, print, server, setInterval, setTimeout } from "@amxts/core";
 import { publicFor, showMenu } from "@amxts/core/kit";
-import { GetLangTransKey, get_maxplayers, register_menucmd, register_menuid } from "~/natives";
+import { GetLangTransKey, get_maxplayers, register_menucmd, register_menuid } from "@amxts/core/natives";
 import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuCoreOptions, MenuEventType, MenuItemOptions, MenuKind, MenuOptions, MenuShowOptions, MenuText, PlaceholderValue, RestrictionTest, RowTest } from "./types";
 
 import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, ListFilter, Screen, Labels, Check, MenuItem, Variant, ItemSpec, MenuFile, NameKind, NameUse, RequirementSpec, addNamedFilter, blankItem, checksOf, iniItem, insertItem, stateOf, textOf } from "./internal";
