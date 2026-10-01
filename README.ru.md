@@ -38,11 +38,14 @@
 npx amxts module add menu-core
 ```
 
-Команда ставит пакет и добавляет его в `modules` в `amxts.config.ts` проекта. Настройки модуля пишутся рядом, в `menus`:
+Команда ставит пакет и [Config Core](https://github.com/amxts/config-core), через который Menu Core читает меню, и добавляет оба в `modules` в `amxts.config.ts` проекта. Настройки модуля пишутся рядом, в `menus`:
 
 ```ts
 export default defineConfig({
-	modules: ["@amxts/menu-core"],
+	modules: [
+		"@amxts/menu-core",
+		"@amxts/config-core", // needed by menu-core
+	],
 	menus: {
 		file: "myserver/menu",   // configs/myserver/menu.ini, .yaml, .yml, .json или .jsonc
 		fallback: "menu",        // configs/menu.*, если первый пуст
@@ -50,7 +53,7 @@ export default defineConfig({
 });
 ```
 
-Menu Core читает меню через [Config Core](https://github.com/amxts/config-core). Пакетный менеджер ставит его вместе с Menu Core, а сборка загружает первым, так что для него ничего добавлять не нужно.
+Сборка загружает Config Core первым. Конфиг, где перечислен только Menu Core, собирается так же: сборка приводит Config Core сама.
 
 | Опция | По умолчанию | Что делает |
 | --- | --- | --- |

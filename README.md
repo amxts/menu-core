@@ -38,11 +38,14 @@ Describe a menu once, in a file — INI, YAML or JSON — or in code, and Menu C
 npx amxts module add menu-core
 ```
 
-It installs the package and adds it to `modules` in your project's `amxts.config.ts`. The module's options go beside it, under `menus`:
+It installs the package and [Config Core](https://github.com/amxts/config-core), which Menu Core reads its menus through, and adds both to `modules` in your project's `amxts.config.ts`. The module's options go beside it, under `menus`:
 
 ```ts
 export default defineConfig({
-	modules: ["@amxts/menu-core"],
+	modules: [
+		"@amxts/menu-core",
+		"@amxts/config-core", // needed by menu-core
+	],
 	menus: {
 		file: "myserver/menu",   // configs/myserver/menu.ini, .yaml, .yml, .json or .jsonc
 		fallback: "menu",        // configs/menu.* when the first one is empty
@@ -50,7 +53,7 @@ export default defineConfig({
 });
 ```
 
-Menu Core reads its menus through [Config Core](https://github.com/amxts/config-core). The package manager installs it along with Menu Core, and the build loads it first, so there is nothing to add for it.
+The build loads Config Core first. A config that lists only Menu Core builds the same: the build brings Config Core along.
 
 | Option | Default | What it does |
 | --- | --- | --- |
