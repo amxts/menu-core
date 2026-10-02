@@ -841,7 +841,7 @@ function menuNamed(name: string) {
 }
 
 function lookingAt(menu: Menu) {
-	return Player.all().filter(player => viewerOf(player.id).menu == menu.name);
+	return server.players.filter(player => viewerOf(player.id).menu == menu.name);
 }
 
 function words(text: string) {
@@ -1237,7 +1237,7 @@ function listOf(viewer: Player, menu: Menu) {
 		listing.fromSource = true;
 		listing.rows = given.filter(row => row.kind == "text" || passesFilters(menu, row.target, viewer.id));
 	} else if (stateOf(menu.name).items.length > 0) {
-		listing.rows = Player.all()
+		listing.rows = server.players
 			.filter(player => passesFilters(menu, player.id, viewer.id))
 			.map(player => listRow(player.id, player.name));
 	}
@@ -1273,7 +1273,7 @@ function sourceFor(menu: string) {
 function sayEmpty(player: Player, menu: Menu) {
 	const filters = stateOf(menu.name).filters;
 	for (const filter of filters) {
-		const passing = Player.all().some(target => passesFilter(filter, target.id, player.id));
+		const passing = server.players.some(target => passesFilter(filter, target.id, player.id));
 
 		if (!passing && filter.message.length > 0) {
 			say(player, filter.message);
