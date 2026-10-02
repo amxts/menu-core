@@ -77,10 +77,10 @@ shop.addItem("Buy AWP", {
 	// Greyed out while one says no: the first that does gives its message.
 	enabled: [
 		{ when: (player) => player.isAlive, message: "Only while alive" },
-		{ when: (player) => player.account >= 4750, message: (player) => `Need $${4750 - player.account} more` },
+		{ when: (player) => player.money >= 4750, message: (player) => `Need $${4750 - player.money} more` },
 	],
 	onSelect: (player) => {
-		player.account = player.account - 4750;
+		player.money = player.money - 4750;
 		player.give("weapon_awp");
 	},
 });

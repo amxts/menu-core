@@ -77,10 +77,10 @@ shop.addItem("Купить AWP", {
 	// Серый, пока одно отвечает «нет»: первое такое даёт своё сообщение.
 	enabled: [
 		{ when: (player) => player.isAlive, message: "Только живым" },
-		{ when: (player) => player.account >= 4750, message: (player) => `Не хватает $${4750 - player.account}` },
+		{ when: (player) => player.money >= 4750, message: (player) => `Не хватает $${4750 - player.money}` },
 	],
 	onSelect: (player) => {
-		player.account = player.account - 4750;
+		player.money = player.money - 4750;
 		player.give("weapon_awp");
 	},
 });
