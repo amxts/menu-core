@@ -253,7 +253,7 @@ server.addEventListener("init", () => {
 	setTimeout(startChecking);
 });
 
-server.addEventListener("putinserver", (event) => {
+server.addEventListener("putInServer", (event) => {
 	const viewer = viewerOf(event.player.id);
 	stopPlayerTimer(viewer);
 	viewer.menu = "";
