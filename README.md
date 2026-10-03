@@ -25,7 +25,7 @@ Describe a menu once, in a file — INI, YAML or JSON — or in code, and Menu C
 - **Menus from a file or from code.** Admins edit `menu.ini`, `menu.yaml` or `menu.json` without touching a plugin; plugins add their own items at run time.
 - **Mistakes said where they are.** An unknown key, a value of the wrong kind, a condition or an action nobody registered: the server console says so, with the file and the line.
 - **Shown, and chosen.** An item says when it is shown at all (`visible`) and when it can be chosen (`enabled`): greyed out, with the message of the first requirement that fails beside it.
-- **Text that follows the player.** A title, an item or a message can be a function — ``(player) => `Heal (${player.health} HP)` `` — read each time the menu is drawn; in `menu.ini`, `%hp%`-style placeholders do the same.
+- **Text that follows the player.** A title, an item or a message can be a function — ``({ player }) => `Heal (${player.health} HP)` `` — read each time the menu is drawn; in `menu.ini`, `%hp%`-style placeholders do the same.
 - **List menus.** A row per player or per item of your own list, with filters and a message when nothing is left.
 - **Variants.** One item, several faces: the first variant whose `when` holds is shown.
 - **Countdowns and locks.** Timed menus, one timer per player or one for everyone, and menus that cannot be closed or replaced.
@@ -65,38 +65,72 @@ The build loads Config Core first. A config that lists only Menu Core builds the
 A plugin uses the module as `menus`, without an import line: the build adds the import to the plugins that use it, and builds the module only when some plugin does.
 
 ```ts
-const shop = menus.create("SHOP", { title: (player) => `Shop for ${player.name}` });
+const shop = menus.create("SHOP", { title: ({ player }) => `Shop for ${player.name}` });
 
-shop.addItem((player) => `Heal (${player.health} HP)`, {
-	visible: (player) => player.health < 100,
-	onSelect: (player) => {
+shop.addItem({
+	title: ({ player }) => `Heal (${player.health} HP)`,
+	visible: ({ player }) => player.health < 100,
+	onSelect: ({ player }) => {
 		player.health = 100;
 	},
 });
-shop.addItem("Buy AWP", {
+shop.addItem({
+	title: "Buy AWP",
 	// Greyed out while one says no: the first that does gives its message.
 	enabled: [
-		{ when: (player) => player.isAlive, message: "Only while alive" },
-		{ when: (player) => player.money >= 4750, message: (player) => `Need $${4750 - player.money} more` },
+		{ when: ({ player }) => player.isAlive, message: "Only while alive" },
+		{ when: ({ player }) => player.money >= 4750, message: ({ player }) => `Need $${4750 - player.money} more` },
 	],
-	onSelect: (player) => {
+	onSelect: ({ player }) => {
 		player.money = player.money - 4750;
 		player.give("weapon_awp");
 	},
 });
-shop.addItem("Reset score", {
-	enabled: (player) => player.frags != 0,
+shop.addItem({
+	title: "Reset score",
+	enabled: ({ player }) => player.frags != 0,
 	message: "(already 0)",
-	onSelect: (player) => {
+	onSelect: ({ player }) => {
 		player.frags = 0;
 	},
 });
-shop.addItem("Close", { action: "CLOSE_MENU", spaceBefore: 1 });
+shop.addItem({ title: "Close", action: "CLOSE_MENU", spaceBefore: 1 });
 
 server.addCommand("/shop", ({ player }) => shop.show(player));
 ```
 
-Text — a title, an item, a message — is the text itself or a function that gives it for the player who looks. A plain string that is a lang key is translated for him.
+Every function of a menu — a title, `visible`, `enabled`, `onSelect` — gets one object, the menu's context:
+
+- `player` — the player the menu is shown to: who looks at it, and who chooses;
+- `target` — the player the menu is about: the row's in a list menu, the one `show(player, { target })` was given otherwise, and `player` himself when there is none;
+- `row` — the row's number in a list menu, as `listRow()` gave it: an entity, an index of your own list — or a player's `id` in a list of players;
+- `menu` — the menu.
+
+A list menu (its name starts with `LIST_`) has a row per player, drawn with its first item:
+
+```ts
+const kick = menus.create("LIST_KICK", { title: "Kick a player" });
+kick.addFilter(({ player, target }) => target.id != player.id, "Nobody to kick");
+kick.addItem({
+	title: ({ target }) => target.name,
+	onSelect: ({ player, target }) => target.kick(`Kicked by ${player.name}`),
+});
+```
+
+Or a row per item of a list of your own, `menu.setListSource(rows)`:
+
+```ts
+const maps = ["de_dust2", "de_inferno", "de_nuke"];
+
+const vote = menus.create("LIST_MAPS", { title: "Next map" });
+vote.setListSource(() => maps.map((map, index) => menus.listRow(index, map)));
+vote.addItem({
+	title: ({ row }) => maps[row],
+	onSelect: ({ player, row }) => print(0, `${player.name} votes for ${maps[row]}`),
+});
+```
+
+Text — a title, an item, a message — is the text itself or a function that gives it for the context. A plain string that is a lang key is translated for the player.
 
 An item says when it is shown and when it can be chosen:
 
@@ -115,13 +149,14 @@ A menu is an object: `menus.create()` makes one, and its methods fill and open i
 
 | Method | What it does |
 | --- | --- |
-| `menu.addItem(text, options?)` | Adds an item: its text, or `(player, target) => text` — `target` is the row's in a list menu. Options: `onSelect`, `visible` (left out while it says no), `enabled` (greyed out while it says no — a test, or a list of `{ when, message }`), `message`, `at`, `spaceBefore`, `spaceAfter`; and for menus that name what plugins register, `action` and `placeholder`. |
-| `menu.addFixedItem(slot, text, options?)` | An item that keeps slot 1–7 on every page. |
-| `menu.addFilter(test, message?)` | A list menu leaves out the rows `test` says no to. |
-| `menu.setListSource(rows)` | A list menu's own rows: `listRow(target, text)`, `textRow(text)`. |
+| `menu.addItem(item)` | Adds an item: `title` — the text, or a function of the context — and `onSelect`, `visible` (left out while it says no), `enabled` (greyed out while it says no — a test, or a list of `{ when, message }`), `message`, `at`, `spaceBefore`, `spaceAfter`; and for menus that name what plugins register, `action` and `placeholder`. |
+| `menu.addFixedItem(slot, item)` | An item that keeps slot 1–7 on every page. |
+| `menu.addFilter(test, message?)` | A list menu leaves out the rows `test` says no to; `target` is the row's player. |
+| `menu.setListSource(rows)` | A list menu's own rows: `listRow(row, text)`, `textRow(text)`. |
 | `menu.addEventListener("open" \| "close" \| "show", listener)` | This menu's events; `"show"` comes before it opens, `event.preventDefault()` stops it. |
 | `menu.show(player, options?)` | Opens the menu; `false` when it does not open. Options: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
 | `menu.refresh()` · `menu.close()` · `menu.clearItems()` | Redraw it or close it for whoever looks at it; remove its items. |
+| `menu.runActions(player, line, target?)` | Runs an action line — `"GIVE_HP CLOSE_MENU"` — as a choice in the menu does. |
 | `menu.setTimer(seconds)` · `menu.cancelTimer()` | The countdown everyone looking at it shares. |
 
 Its fields — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` — are set directly; `name`, `kind` and `countdown` are read.
@@ -131,7 +166,7 @@ Its fields — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` 
 | `create(name, options?)` | A menu in code, or the existing one with that name. A name starting with `LIST_` makes a list menu. Options: `title` (text or a function), `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
 | `find(name)` · `register(name)` | A menu by its name; `register` reads it from the file ahead of time. |
 | `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | The player's menu, whichever it is. |
-| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | What menu files and Pawn plugins name, answered by functions — `%name%` in their text is a placeholder. A restriction's `message` is said beside an item it greys out, unless the item or the requirement has its own. `menu.addPlaceholder(name, value)` gives one to a single menu. |
+| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | What menu files and Pawn plugins name, answered by functions — `%name%` in their text is a placeholder. An action, a placeholder and a restriction get the menu's context and the `name` they are asked by; a condition, `(player, viewer, name)`, is asked of the row's player in a list menu. A restriction's `message` is said beside an item it greys out, unless the item or the requirement has its own. `menu.addPlaceholder(name, value)` gives one to a single menu. |
 | `setListSource(name, rows)` · `refresh("A B")` · `conditionChanged(name)` · `addEventListener(type, listener)` | The same for menus by name, and every menu's events. |
 
 ## Menus in a file

@@ -25,7 +25,7 @@
 - **Меню из файла или из кода.** Админ правит `menu.ini`, `menu.yaml` или `menu.json`, не трогая плагин; плагины добавляют свои пункты на ходу.
 - **Ошибки — с местом.** Незнакомый ключ, значение не того вида, условие или действие, которое никто не зарегистрировал: консоль сервера говорит об этом, с файлом и строкой.
 - **Виден и доступен.** Пункт говорит, когда он вообще показан (`visible`) и когда его можно выбрать (`enabled`): иначе он серый, а рядом — сообщение первого требования, которое не выполнено.
-- **Текст, который зависит от игрока.** Заголовок, пункт или сообщение могут быть функцией — ``(player) => `Лечение (${player.health} HP)` `` — она читается при каждой отрисовке; в `menu.ini` то же делают плейсхолдеры вроде `%hp%`.
+- **Текст, который зависит от игрока.** Заголовок, пункт или сообщение могут быть функцией — ``({ player }) => `Лечение (${player.health} HP)` `` — она читается при каждой отрисовке; в `menu.ini` то же делают плейсхолдеры вроде `%hp%`.
 - **Меню-списки.** Строка на каждого игрока или на каждый элемент своего списка, с фильтрами и сообщением, если никого не осталось.
 - **Варианты.** Один пункт, несколько видов: показывается первый вариант, чьё `when` выполняется.
 - **Отсчёт и блокировка.** Меню с таймером — свой у каждого игрока или один на всех — и меню, которое нельзя закрыть или заменить.
@@ -65,38 +65,72 @@ export default defineConfig({
 Плагин пользуется модулем как `menus`, без строки импорта: сборка добавляет импорт в те плагины, которые им пользуются, и собирает модуль, только когда им пользуется хоть один.
 
 ```ts
-const shop = menus.create("SHOP", { title: (player) => `Магазин для ${player.name}` });
+const shop = menus.create("SHOP", { title: ({ player }) => `Магазин для ${player.name}` });
 
-shop.addItem((player) => `Лечение (${player.health} HP)`, {
-	visible: (player) => player.health < 100,
-	onSelect: (player) => {
+shop.addItem({
+	title: ({ player }) => `Лечение (${player.health} HP)`,
+	visible: ({ player }) => player.health < 100,
+	onSelect: ({ player }) => {
 		player.health = 100;
 	},
 });
-shop.addItem("Купить AWP", {
+shop.addItem({
+	title: "Купить AWP",
 	// Серый, пока одно отвечает «нет»: первое такое даёт своё сообщение.
 	enabled: [
-		{ when: (player) => player.isAlive, message: "Только живым" },
-		{ when: (player) => player.money >= 4750, message: (player) => `Не хватает $${4750 - player.money}` },
+		{ when: ({ player }) => player.isAlive, message: "Только живым" },
+		{ when: ({ player }) => player.money >= 4750, message: ({ player }) => `Не хватает $${4750 - player.money}` },
 	],
-	onSelect: (player) => {
+	onSelect: ({ player }) => {
 		player.money = player.money - 4750;
 		player.give("weapon_awp");
 	},
 });
-shop.addItem("Сбросить счёт", {
-	enabled: (player) => player.frags != 0,
+shop.addItem({
+	title: "Сбросить счёт",
+	enabled: ({ player }) => player.frags != 0,
 	message: "(уже 0)",
-	onSelect: (player) => {
+	onSelect: ({ player }) => {
 		player.frags = 0;
 	},
 });
-shop.addItem("Закрыть", { action: "CLOSE_MENU", spaceBefore: 1 });
+shop.addItem({ title: "Закрыть", action: "CLOSE_MENU", spaceBefore: 1 });
 
 server.addCommand("/shop", ({ player }) => shop.show(player));
 ```
 
-Текст — заголовок, пункт, сообщение — это сам текст или функция, которая даёт его для игрока, который смотрит. Обычная строка, если это ключ словаря, переводится для него.
+Каждая функция меню — заголовок, `visible`, `enabled`, `onSelect` — получает один объект, контекст меню:
+
+- `player` — игрок, которому показано меню: тот, кто его смотрит и выбирает;
+- `target` — игрок, о котором меню: игрок строки в меню-списке, иначе тот, кого передали `show(player, { target })`, а если такого нет — сам `player`;
+- `row` — номер строки в меню-списке, как его дал `listRow()`: сущность, индекс в своём списке — или `id` игрока в списке игроков;
+- `menu` — само меню.
+
+Меню-список (его имя начинается с `LIST_`) — строка на каждого игрока, нарисованная по его первому пункту:
+
+```ts
+const kick = menus.create("LIST_KICK", { title: "Кикнуть игрока" });
+kick.addFilter(({ player, target }) => target.id != player.id, "Кикать некого");
+kick.addItem({
+	title: ({ target }) => target.name,
+	onSelect: ({ player, target }) => target.kick(`Кикнул ${player.name}`),
+});
+```
+
+Или строка на каждый элемент своего списка — `menu.setListSource(rows)`:
+
+```ts
+const maps = ["de_dust2", "de_inferno", "de_nuke"];
+
+const vote = menus.create("LIST_MAPS", { title: "Следующая карта" });
+vote.setListSource(() => maps.map((map, index) => menus.listRow(index, map)));
+vote.addItem({
+	title: ({ row }) => maps[row],
+	onSelect: ({ player, row }) => print(0, `${player.name} голосует за ${maps[row]}`),
+});
+```
+
+Текст — заголовок, пункт, сообщение — это сам текст или функция, которая даёт его по контексту. Обычная строка, если это ключ словаря, переводится для игрока.
 
 Пункт говорит, когда он показан и когда его можно выбрать:
 
@@ -115,13 +149,14 @@ server.addCommand("/shop", ({ player }) => shop.show(player));
 
 | Метод | Что делает |
 | --- | --- |
-| `menu.addItem(text, options?)` | Добавляет пункт: его текст или `(player, target) => текст` — `target` — цель строки в меню-списке. Опции: `onSelect`, `visible` (пункта нет, пока отвечает «нет»), `enabled` (пункт серый, пока отвечает «нет», — проверка или список `{ when, message }`), `message`, `at`, `spaceBefore`, `spaceAfter`; а для меню, которые называют зарегистрированное плагинами, — `action` и `placeholder`. |
-| `menu.addFixedItem(slot, text, options?)` | Пункт, который на каждой странице занимает слот 1–7. |
-| `menu.addFilter(test, message?)` | Меню-список пропускает строки, на которые `test` отвечает «нет». |
-| `menu.setListSource(rows)` | Свои строки меню-списка: `listRow(target, text)`, `textRow(text)`. |
+| `menu.addItem(item)` | Добавляет пункт: `title` — текст или функция контекста — и `onSelect`, `visible` (пункта нет, пока отвечает «нет»), `enabled` (пункт серый, пока отвечает «нет», — проверка или список `{ when, message }`), `message`, `at`, `spaceBefore`, `spaceAfter`; а для меню, которые называют зарегистрированное плагинами, — `action` и `placeholder`. |
+| `menu.addFixedItem(slot, item)` | Пункт, который на каждой странице занимает слот 1–7. |
+| `menu.addFilter(test, message?)` | Меню-список пропускает строки, на которые `test` отвечает «нет»; `target` — игрок строки. |
+| `menu.setListSource(rows)` | Свои строки меню-списка: `listRow(row, text)`, `textRow(text)`. |
 | `menu.addEventListener("open" \| "close" \| "show", listener)` | События этого меню; `"show"` приходит до открытия, `event.preventDefault()` его отменяет. |
 | `menu.show(player, options?)` | Открывает меню; `false`, если оно не открылось. Опции: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
 | `menu.refresh()` · `menu.close()` · `menu.clearItems()` | Перерисовать или закрыть у всех, кто его смотрит; убрать пункты. |
+| `menu.runActions(player, line, target?)` | Выполняет строку действий — `"GIVE_HP CLOSE_MENU"` — как её выполняет выбор в меню. |
 | `menu.setTimer(seconds)` · `menu.cancelTimer()` | Общий отсчёт для всех, кто его смотрит. |
 
 Его поля — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` — задаются напрямую; `name`, `kind` и `countdown` читаются.
@@ -131,7 +166,7 @@ server.addCommand("/shop", ({ player }) => shop.show(player));
 | `create(name, options?)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. Опции: `title` (текст или функция), `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
 | `find(name)` · `register(name)` | Меню по имени; `register` заранее читает его из файла. |
 | `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | Меню игрока, какое бы оно ни было. |
-| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | То, что называют файлы меню и Pawn-плагины, — ответы функциями; `%name%` в их тексте — плейсхолдер. `message` ограничения пишется рядом с пунктом, который оно гасит, если у пункта или требования нет своего. `menu.addPlaceholder(name, value)` задаёт его одному меню. |
+| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | То, что называют файлы меню и Pawn-плагины, — ответы функциями; `%name%` в их тексте — плейсхолдер. Действие, плейсхолдер и ограничение получают контекст меню и имя `name`, по которому их спросили; условие, `(player, viewer, name)`, в меню-списке спрашивается об игроке строки. `message` ограничения пишется рядом с пунктом, который оно гасит, если у пункта или требования нет своего. `menu.addPlaceholder(name, value)` задаёт его одному меню. |
 | `setListSource(name, rows)` · `refresh("A B")` · `conditionChanged(name)` · `addEventListener(type, listener)` | То же для меню по имени и события всех меню. |
 
 ## Меню в файле
