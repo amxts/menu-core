@@ -107,3 +107,23 @@ describe("a list menu", () => {
 		expect(alice.chat).toContain("Too slow");
 	});
 });
+
+describe("a plugin that stops", () => {
+	test("its menu goes; loaded again, it makes the menu once and its functions are called in the new load", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice", { health: 40 });
+		const shop = server.plugins.find(plugin => plugin.source.endsWith("shop.ts"))!;
+
+		alice.say("/shop");
+		expect(menus.screen(alice)).not.toBe(null);
+		server.unload(shop);
+		expect(menus.screen(alice)).toBe(null);
+
+		await server.load(shop.source);
+		alice.say("/shop");
+		expect(menus.screen(alice)!.text).toBe("Shop for Alice\n\n\\y[1]\\w Heal (40 HP)\n\\y[2]\\w Armor\n\\d[3] Helmet\\y (50 HP needed)\n\n\\y[4]\\w Close\n\n\n\n\n\\y[0]\\w Exit");
+		menus.press(alice, 1);
+		expect(alice.health).toBe(100);
+		expect(alice.chat).toContain("Healed");
+	});
+});
