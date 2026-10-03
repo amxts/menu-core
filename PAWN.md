@@ -18,7 +18,7 @@ A plugin compiled against it gets a tag warning for a bare number where `MenuPro
 
 ### How the natives behave
 
-- No Pawn limits: names, titles and placeholders are as long as they are written, a menu keeps every item, the way back is as long as it gets, and a menu longer than 500 bytes is sent whole.
+- No length limits: names, titles and placeholders are as long as they are written, a menu keeps every item, the way back is as long as it gets, and a menu longer than 500 bytes is sent whole.
 - `mc_get_menu_property_string(idx, MP_SECTION)` gives the menu's section.
 - A condition filter applies wherever the condition is asked.
 - A restriction's `message` is shown beside an item it greys out when the item has no message of its own.

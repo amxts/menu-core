@@ -17,9 +17,6 @@
 
 Describe a menu once, in a file — INI, YAML or JSON — or in code, and Menu Core handles the rest: pages, keys, the way back, countdowns, and items that appear, disappear or grey out depending on who is looking.
 
-> [!WARNING]
-> **In progress.** Menu Core has been tried in game only a few times, and its API may still change.
-
 ## Features
 
 - **Menus from a file or from code.** Admins edit `menu.ini`, `menu.yaml` or `menu.json` without touching a plugin; plugins add their own items at run time.
@@ -30,7 +27,7 @@ Describe a menu once, in a file — INI, YAML or JSON — or in code, and Menu C
 - **Variants.** One item, several faces: the first variant whose `when` holds is shown.
 - **Countdowns and locks.** Timed menus, one timer per player or one for everyone, and menus that cannot be closed or replaced.
 - **One instance per server.** Every plugin, TypeScript or Pawn, fills and opens the same menus.
-- **No Pawn limits.** Long names, many items, Cyrillic menus over 500 bytes.
+- **No length limits.** Long names, many items, Cyrillic menus over 500 bytes.
 
 ## Installation
 
@@ -368,7 +365,7 @@ What does not fit a menu file is said in the server console with the file and th
 
 ### In the editor
 
-The amxts extension for VS Code checks a menu file as you type — the same checks, in the same words — and completes the keys and the names your plugins register (TypeScript, Pawn and installed modules), with hover and go to definition to the registration. A name added in a plugin is offered in the menu file at once, before the plugin is saved. It is not on the Marketplace yet: install its `.vsix` with `code --install-extension amxts-vscode-<version>.vsix`.
+The amxts extension for VS Code checks a menu file as you type — the same checks, in the same words — and completes the keys and the names your plugins register (TypeScript, Pawn and installed modules), with hover and go to definition to the registration. A name added in a plugin is offered in the menu file at once, before the plugin is saved. It is installed from its `.vsix`, with `code --install-extension amxts-vscode-<version>.vsix`.
 
 > [!WARNING]
 > The extension knows only names written as a string in the workspace: `menus.addAction(name, ...)` with the name in a variable, and a name only a Pawn plugin on the server registers, are a warning in the editor. The server's check on its first frame is the one that counts.
