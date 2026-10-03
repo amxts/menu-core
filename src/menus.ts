@@ -3,11 +3,11 @@
  * menu is drawn and chosen from.
  */
 import { accessOf, Forward, Player, clearInterval, lang, print, server, setInterval, setTimeout } from "@amxts/core";
-import { publicFor, showMenu } from "@amxts/core/kit";
+import { callingPlugin, onPluginStop, publicFor, showMenu } from "@amxts/core/kit";
 import { GetLangTransKey, get_maxplayers, register_menucmd, register_menuid } from "@amxts/core/natives";
 import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuContext, MenuEventType, MenuItemOptions, MenuKind, MenuOptions, MenuShowOptions, NamedContext, PlaceholderValue, RestrictionTest, RowTest } from "./types";
 
-import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, ListFilter, Screen, Labels, Check, MenuItem, Variant, ItemSpec, MenuFile, NameKind, NameUse, RequirementSpec, addNamedFilter, blankItem, checksOf, iniItem, insertItem, stateOf, textOf } from "./internal";
+import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, ListFilter, Screen, Labels, Check, MenuItem, Variant, ItemSpec, MenuFile, NameKind, NameUse, RequirementSpec, addNamedFilter, blankItem, checksOf, forgetState, iniItem, insertItem, stateOf, textOf } from "./internal";
 import { readMenuFile, suggestion, warn } from "./menu-file";
 
 /**
@@ -79,12 +79,12 @@ export class Menu {
 
 	/** A filter of a list menu: rows `test` says no to are left out - `target` is the row's player - and `message` is said when none is left. */
 	addFilter(test: RowTest, message?: string) {
-		stateOf(this.name).filters.push({ condition: "", when: "", test, message: message ?? "" });
+		stateOf(this.name).filters.push({ condition: "", when: "", test, message: message ?? "", from: callingPlugin() });
 	}
 
 	/** A placeholder of this menu, for menu files and Pawn plugins: the text `%name%` stands for, before the ones registered with `addPlaceholder()`. In code the text is a function instead. */
 	addPlaceholder(name: string, value: PlaceholderValue) {
-		stateOf(this.name).placeholders.push({ name, value });
+		stateOf(this.name).placeholders.push({ name, value, from: callingPlugin() });
 	}
 
 	/** The source of this list menu's rows, instead of the players. */
@@ -94,7 +94,7 @@ export class Menu {
 
 	/** Calls `listener` on this menu's events of `type`, one of `"open"`, `"close"` or `"show"` (before it opens). */
 	addEventListener(type: MenuEventType, listener: MenuListener) {
-		listeners.push({ type, listener, menu: this.name });
+		listeners.push({ type, listener, menu: this.name, from: callingPlugin() });
 	}
 
 	/**
@@ -179,6 +179,8 @@ interface ListenerEntry {
 	listener: MenuListener;
 	/** The menu it listens to, by name; "" for every one. */
 	menu: string;
+	/** The plugin that added it, as `callingPlugin()` numbers it. */
+	from: number;
 }
 
 const DEFAULTS: Labels = {
@@ -203,20 +205,23 @@ const BUILT_IN_CONDITIONS = ["IS_ALIVE", "IS_DEAD", "IS_BOT", "IS_ADMIN"];
 const TEAMS = ["CT", "TERRORIST", "SPECTATOR", "UNASSIGNED"];
 const KEY_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
 
+/** Every menu by its number, which Pawn plugins know it by: a menu that went keeps it, for one of its name to take again. */
 const menus: Menu[] = [];
 const menuByName = new Map<string, Menu>();
+/** The menus whose keys come to pressed(), by name: registered once, since AMX Mod X cannot take a registration back. */
+const listening = new Set<string>();
 const viewers = new Map<number, Viewer>();
 /** The shared countdown's timer of each menu that has one running, by name. */
 const menuTimers = new Map<string, number>();
 
-const conditions: ConditionEntry[] = [];
-const actions: ActionEntry[] = [];
-const placeholders: PlaceholderEntry[] = [];
-const restrictions: RestrictionEntry[] = [];
-const actionChecks: ActionCheck[] = [];
-const conditionFilters: FilterEntry[] = [];
-const sources: SourceEntry[] = [];
-const listeners: ListenerEntry[] = [];
+let conditions: ConditionEntry[] = [];
+let actions: ActionEntry[] = [];
+let placeholders: PlaceholderEntry[] = [];
+let restrictions: RestrictionEntry[] = [];
+let actionChecks: ActionCheck[] = [];
+let conditionFilters: FilterEntry[] = [];
+let sources: SourceEntry[] = [];
+let listeners: ListenerEntry[] = [];
 
 const labels: Labels = {
 	exit: DEFAULTS.exit,
@@ -267,6 +272,8 @@ server.addEventListener("disconnected", (event) => {
 	viewerOf(event.player.id).history = [];
 });
 
+onPluginStop(forget);
+
 /**
  * Sets the file menus are read from, under `configs/`: without an extension,
  * the first of `.ini`, `.yaml`, `.yml`, `.json` and `.jsonc` that is there. Read when
@@ -292,7 +299,7 @@ export function indexOf(menu: Menu | null) {
 /** The menu with that number among all of them - the reverse of `indexOf()`; `null` when there is none. */
 export function menuAt(index: number) {
 	if (index < 0 || index >= menus.length) return null;
-	return menus[index];
+	return find(menus[index].name);
 }
 
 /** The menu of that name in the menu file, read now if it is not yet; `null` when the file has no such menu, or no items in it. */
@@ -315,7 +322,7 @@ export function register(name: string) {
 	for (const item of spec.items) state.items.push(itemOfSpec(item));
 	for (const item of spec.fixed) state.fixed.push(itemOfSpec(item));
 	for (const filter of spec.filters) {
-		if (filter.when.length > 0) state.filters.push({ condition: "", when: filter.when, test: null, message: filter.message });
+		if (filter.when.length > 0) state.filters.push({ condition: "", when: filter.when, test: null, message: filter.message, from: 0 });
 		else addNamedFilter(name, filter.condition, filter.message);
 	}
 
@@ -337,8 +344,10 @@ export function create(name: string, options: MenuOptions = {}) {
 	menu.hideBack = options.hideBack ?? false;
 	menu.hideExit = options.hideExit ?? false;
 	menu.locked = options.locked ?? false;
+	const state = stateOf(name);
+	state.from = callingPlugin();
 	const activeWhen = options.activeWhen;
-	if (activeWhen != null) stateOf(name).activeWhen = activeWhen;
+	if (activeWhen != null) state.activeWhen = activeWhen;
 	return add(menu);
 }
 
@@ -346,6 +355,7 @@ export function create(name: string, options: MenuOptions = {}) {
 function itemOf(menu: Menu, options: MenuItemOptions, slot: number) {
 	const { placeholder = "", spaceBefore = 0, spaceAfter = 0 } = options;
 	const item = blankItem(options.title, actionOf(menu, options), slot);
+	item.from = callingPlugin();
 	item.placeholder = placeholder;
 	const visible = options.visible;
 	const enabled = options.enabled;
@@ -360,13 +370,13 @@ function itemOf(menu: Menu, options: MenuItemOptions, slot: number) {
 
 /** Registers a condition by name, for menu files and Pawn plugins; the first one registered under a name is the one asked - a built-in one (`IS_ALIVE`, `TEAM_CT`, ...) too. */
 export function addCondition(name: string, test: ConditionTest) {
-	conditions.push({ name, test });
+	conditions.push({ name, test, from: callingPlugin() });
 	return conditions.length - 1;
 }
 
 /** Registers an action by name, for menu files and Pawn plugins; `SHOW_<MENU>` and `CLOSE_MENU` are built in. */
 export function addAction(name: string, run: ActionHandler) {
-	actions.push({ name, run });
+	actions.push({ name, run, from: callingPlugin() });
 	return actions.length - 1;
 }
 
@@ -374,25 +384,25 @@ export function addAction(name: string, run: ActionHandler) {
 export function addPlaceholder(name: string, value: PlaceholderValue) {
 	const known = placeholders.findIndex(entry => entry.name == name);
 	if (known >= 0) return known;
-	placeholders.push({ name, value });
+	placeholders.push({ name, value, from: callingPlugin() });
 	return placeholders.length - 1;
 }
 
 /** Registers a restriction by name, for menu files to name in `enabled` and `when`: `message` is said beside an item it greys out, unless the item or the requirement has its own; `"*"` answers for every name nothing else does. */
 export function addRestriction(name: string, test: RestrictionTest, message?: string) {
-	restrictions.push({ name, test, message: message ?? "" });
+	restrictions.push({ name, test, message: message ?? "", from: callingPlugin() });
 	return restrictions.length - 1;
 }
 
 /** Greys out items with `action` in `menu` while `test` says no; `""` for either means every one. */
 export function addActionCheck(menu: string, action: string, test: ActionTest) {
-	actionChecks.push({ menu, action, test });
+	actionChecks.push({ menu, action, test, from: callingPlugin() });
 	return actionChecks.length - 1;
 }
 
 /** Registers a filter over the condition `name`, whoever registered it: it gets the condition's value and returns the one to use. */
 export function addConditionFilter(name: string, filter: ConditionFilter) {
-	conditionFilters.push({ name, filter });
+	conditionFilters.push({ name, filter, from: callingPlugin() });
 	return conditionFilters.length - 1;
 }
 
@@ -402,17 +412,17 @@ export function setListSource(menu: string, rows: ListSource) {
 	const known = sources.findIndex(source => source.menu == upper);
 
 	if (known >= 0) {
-		sources[known].rows = rows;
+		sources[known] = { menu: upper, rows, from: callingPlugin() };
 		return known;
 	}
 
-	sources.push({ menu: upper, rows });
+	sources.push({ menu: upper, rows, from: callingPlugin() });
 	return sources.length - 1;
 }
 
 /** Calls `listener` on every menu event of `type`, one of `"open"`, `"close"` or `"show"` (before a menu opens). */
 export function addEventListener(type: MenuEventType, listener: MenuListener) {
-	listeners.push({ type, listener, menu: "" });
+	listeners.push({ type, listener, menu: "", from: callingPlugin() });
 	return listeners.length - 1;
 }
 
@@ -741,16 +751,61 @@ function unknownAction(name: string, file: MenuFile) {
 	return `the action "${name}" is not registered${suggestion(name, known)}`;
 }
 
+/** A menu among the others: at the number of one of its name that went, else after them. */
 function add(menu: Menu) {
-	menus.push(menu);
+	const at = menus.findIndex(each => each.name == menu.name);
+	if (at >= 0) menus[at] = menu;
+	else menus.push(menu);
 	menuByName.set(menu.name, menu);
 	if (started) listenForKeys(menu);
 	else waiting.push(menu);
 	return menu;
 }
 
-/** The menu's keys come to pressed(); a reload keeps the registration it had. */
+/**
+ * A plugin that called the module stopped: what it gave goes - the menus it
+ * made, its items, filters and placeholders in the others, the names it
+ * registered and its listeners. A reloaded plugin gives them again.
+ */
+function forget(plugin: number) {
+	conditions = conditions.filter(entry => entry.from != plugin);
+	actions = actions.filter(entry => entry.from != plugin);
+	placeholders = placeholders.filter(entry => entry.from != plugin);
+	restrictions = restrictions.filter(entry => entry.from != plugin);
+	actionChecks = actionChecks.filter(entry => entry.from != plugin);
+	conditionFilters = conditionFilters.filter(entry => entry.from != plugin);
+	sources = sources.filter(entry => entry.from != plugin);
+	listeners = listeners.filter(entry => entry.from != plugin);
+
+	for (const menu of menus.filter(each => find(each.name) == each)) {
+		if (stateOf(menu.name).from == plugin) drop(menu);
+		else if (forgetIn(menu, plugin)) refreshMenu(menu);
+	}
+}
+
+/** A menu that went: closed for whoever looks at it, its countdown stopped, its name free. */
+function drop(menu: Menu) {
+	for (const player of lookingAt(menu)) close(player);
+	stopMenuTimer(menu);
+	menuByName.delete(menu.name);
+	forgetState(menu.name);
+}
+
+/** Takes out of a menu the items, filters and placeholders `plugin` gave it; whether there were any. */
+function forgetIn(menu: Menu, plugin: number) {
+	const state = stateOf(menu.name);
+	const before = state.items.length + state.fixed.length + state.filters.length + state.placeholders.length;
+	state.items = state.items.filter(item => item.from != plugin);
+	state.fixed = state.fixed.filter(item => item.from != plugin);
+	state.filters = state.filters.filter(filter => filter.from != plugin);
+	state.placeholders = state.placeholders.filter(entry => entry.from != plugin);
+	return state.items.length + state.fixed.length + state.filters.length + state.placeholders.length != before;
+}
+
+/** The menu's keys come to pressed(), registered once for its name; a reload keeps the registration it had. */
 function listenForKeys(menu: Menu) {
+	if (listening.has(menu.name)) return;
+	listening.add(menu.name);
 	const name = publicFor(onMenuKey, `menu-core:${menu.name}`);
 	if (name.length > 0) register_menucmd(register_menuid(menu.name), ALL_KEYS, name);
 }
