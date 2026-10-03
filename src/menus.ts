@@ -1469,7 +1469,7 @@ function builtInHolds(player: Player, name: string) {
 /** IS_ADMIN: any access but a plain user's "z" - AMX Mod X's is_user_admin. */
 function isAdmin(player: Player) {
 	const access = player.access;
-	return access.length > 0 && !access.includes("User");
+	return access.length > 0 && !access.includes("user");
 }
 
 /** FLAG_abc: any of those users.ini letters. */
