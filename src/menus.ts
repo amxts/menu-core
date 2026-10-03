@@ -1275,7 +1275,12 @@ function passesFilters(menu: Menu, target: number, viewer: number) {
 /** A filter by its test with whoever looks and the row's player, by a file's `when`, or by INI's condition names. */
 function passesFilter(filter: ListFilter, target: number, viewer: number, menu: Menu) {
 	const test = filter.test;
-	if (test != null) return test(contextOf(new Player(viewer), target, menu));
+
+	if (test != null) {
+		const looking = new Player(viewer);
+		return test(contextOf(looking, target, menu));
+	}
+
 	if (filter.when.length > 0) return meets(viewer, target, target, filter.when, menu);
 	return check(target, viewer, filter.condition, false, menu);
 }
@@ -1401,7 +1406,8 @@ function failingToken(player: number, subject: number, target: number, line: str
 
 /** A name of a line of requirements: a restriction, a condition, or else "*"'s. 1 holds, 0 does not, -1 nobody knows the name. */
 function answer(player: number, subject: number, target: number, name: string, menu: Menu) {
-	const asked = namedContextOf(new Player(player), target, menu, name);
+	const looking = new Player(player);
+	const asked = namedContextOf(looking, target, menu, name);
 	const restriction = restrictionNamed(name);
 	if (restriction != null) return restriction.test(asked) ? 1 : 0;
 	const known = holds(subject, player, name);
@@ -1422,7 +1428,8 @@ function holds(id: number, viewerId: number, name: string) {
 }
 
 function passesRestriction(id: number, target: number, name: string, menu: Menu) {
-	const asked = namedContextOf(new Player(id), target, menu, name);
+	const player = new Player(id);
+	const asked = namedContextOf(player, target, menu, name);
 	const entry = restrictionNamed(name);
 	if (entry != null) return entry.test(asked) ? 1 : 0;
 	const wildcard = wildcardRestriction();

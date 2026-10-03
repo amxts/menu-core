@@ -9,8 +9,8 @@ import { Menu } from "./menus";
 export type MenuKind = "items" | "list";
 
 /**
- * What a menu's functions get: the player who looks, who or what the menu is
- * about, and the menu.
+ * A menu's context, which its functions get: the player who looks, who or
+ * what the menu is about, and the menu.
  *
  *     shop.addItem({ title: ({ player }) => `Heal (${player.health} HP)`, onSelect: ({ player }) => heal(player) });
  */
@@ -25,7 +25,7 @@ export interface MenuContext {
 	menu: Menu;
 }
 
-/** What a function registered by name gets - an action, a placeholder, a restriction, an action check: the menu's context, and the name it is asked by. */
+/** The context of a function registered by name - an action, a placeholder, a restriction, an action check: the menu's context, and the name it is asked by. */
 export interface NamedContext extends MenuContext {
 	/** The name it is asked by: an action's or a placeholder's, a restriction's whole token - `"NAME:param"` included; for an action check, the item's action. */
 	name: string;
