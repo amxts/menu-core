@@ -102,12 +102,11 @@ export function mc_register_action(name: string, callback: string, _isCritical =
 	const fn = publicOf(callback);
 
 	if (fn != null) {
-		menus.addAction(name, (player, target) => {
-			const menu = menus.activeMenu(player);
+		menus.addAction(name, ({ player, row, menu }) => {
 			const call = fn.call().int(player.id);
 			// An items menu's action gets the action's name, a list menu's the row's target.
-			if (menu != null && menu.kind == "items") call.text(name);
-			else call.int(target);
+			if (menu.kind == "items") call.text(name);
+			else call.int(row);
 			call.run();
 		});
 	}
@@ -122,9 +121,9 @@ export function mc_register_action(name: string, callback: string, _isCritical =
  */
 export function mc_register_placeholder(name: string, callback: string) {
 	const fn = publicOf(callback);
-	return menus.addPlaceholder(name, (player, target) => {
+	return menus.addPlaceholder(name, ({ player, row }) => {
 		if (fn == null) return "";
-		const call = fn.call().int(player.id).int(target).buffer(PLACEHOLDER_CELLS).int(PLACEHOLDER_CELLS - 1);
+		const call = fn.call().int(player.id).int(row).buffer(PLACEHOLDER_CELLS).int(PLACEHOLDER_CELLS - 1);
 		call.run();
 		return colorTags(call.bufferText);
 	});
@@ -147,9 +146,10 @@ export function mc_register_menu(section: string) {
  * such menu, a show filter or ACTIVE_ON stopped it.
  */
 export function mc_show_menu(player: Player, section: string, time = -1, targetId = 0, resetHistory = false, forceOpen = false, ignoreHistory = false) {
-	const options: MenuShowOptions = { target: targetId, resetHistory, force: forceOpen, skipHistory: ignoreHistory };
+	const options: MenuShowOptions = { resetHistory, force: forceOpen, skipHistory: ignoreHistory };
 	// -1, Pawn's "not given": the option left out.
 	if (time >= 0) options.time = time;
+	if (targetId > 0) options.target = new Player(targetId);
 	return answer(menus.show(player, section, options));
 }
 
@@ -182,7 +182,7 @@ export function mc_refresh_menu(sections: string) {
  */
 export function mc_register_restriction(name: string, callback: string, message?: string) {
 	const fn = publicOf(callback);
-	if (fn != null) menus.addRestriction(name, (player, used, target) => fn.call().int(player.id).text(used).int(target).run() != 0, colorTags(message ?? ""));
+	if (fn != null) menus.addRestriction(name, ({ player, name: used, row }) => fn.call().int(player.id).text(used).int(row).run() != 0, colorTags(message ?? ""));
 	return restrictionCount++;
 }
 
@@ -193,7 +193,7 @@ export function mc_register_restriction(name: string, callback: string, message?
  */
 export function mc_register_action_condition(menuSection: string, actionName: string, callback: string) {
 	const fn = publicOf(callback);
-	if (fn != null) menus.addActionCheck(menuSection, actionName, (player, menu, action) => fn.call().int(player.id).text(menu).text(action).run() != 0);
+	if (fn != null) menus.addActionCheck(menuSection, actionName, ({ player, menu, name: action }) => fn.call().int(player.id).text(menu.name).text(action).run() != 0);
 	return 1;
 }
 
@@ -220,7 +220,7 @@ export function mc_register_condition_filter(condition: string, callback: string
  */
 export function mc_register_list_data_source(menuName: string, callback: string) {
 	const fn = publicOf(callback);
-	return menus.setListSource(menuName, viewer => (fn != null ? rowsFrom(fn, viewer) : null));
+	return menus.setListSource(menuName, ({ player }) => (fn != null ? rowsFrom(fn, player) : null));
 }
 
 /** Called when a menu opens. Callback: public callback(id, const section[]). Returns its id. */

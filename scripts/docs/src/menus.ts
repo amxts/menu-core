@@ -1,4 +1,4 @@
-// The tooltips of src/index.ts, in both languages: scripts/apply-docs.ts writes the
+// The tooltips of src/menus.ts, in both languages: scripts/apply-docs.ts writes the
 // one AMXTS_DOCS_LANG picks into the JSDoc above each element.
 export default {
 	"Menu": {
@@ -7,7 +7,7 @@ export default {
 			the file sets; the methods fill the menu, open it and count it down.
 
 			    const shop = menus.create("SHOP", { title: "Shop" });
-			    shop.addItem("Heal", { onSelect: heal });
+			    shop.addItem({ title: "Heal", onSelect: ({ player }) => heal(player) });
 			    shop.show(player);
 		`,
 		ru: `
@@ -15,7 +15,7 @@ export default {
 			что задаёт файл; методы наполняют меню, открывают его и ведут отсчёт.
 
 			    const shop = menus.create("SHOP", { title: "Shop" });
-			    shop.addItem("Heal", { onSelect: heal });
+			    shop.addItem({ title: "Heal", onSelect: ({ player }) => heal(player) });
 			    shop.show(player);
 		`,
 	},
@@ -60,34 +60,48 @@ export default {
 		ru: `Имя меню — его имя в файле меню, например \`"MAIN_MENU"\`.`,
 	},
 	"Menu.title": {
-		en: `The menu's title: the text - a lang key too - or a function that gives it for the player who looks.`,
-		ru: `Заголовок меню: сам текст — или ключ словаря — либо функция, которая даёт его для игрока, который смотрит.`,
+		en: `The menu's title: the text - a lang key too - or a function that gives it for the menu's context.`,
+		ru: `Заголовок меню: сам текст — или ключ словаря — либо функция, которая даёт его по контексту меню.`,
 	},
 	"Menu.addItem": {
 		en: `
-			Adds an item: its text, or a function that gives it for the player -
-			\`target\` is the row's in a list menu, else the menu's.
+			Adds an item: its title, when it is shown and can be chosen, and what
+			choosing it does - each a function of the menu's context where it
+			depends on who looks.
 
-			    shop.addItem((player) => \`Heal (\${player.health} HP)\`, { onSelect: heal });
+			    shop.addItem({
+			        title: ({ player }) => \`Heal (\${player.health} HP)\`,
+			        visible: ({ player }) => player.isAlive,
+			        onSelect: ({ player }) => {
+			            player.health = 100;
+			        },
+			    });
 		`,
 		ru: `
-			Добавляет пункт: его текст или функцию, которая даёт текст для игрока, —
-			\`target\` — цель строки в меню-списке, иначе меню.
+			Добавляет пункт: его заголовок, когда он показан и когда его можно
+			выбрать и что делает выбор, — каждое функцией контекста меню, если
+			зависит от того, кто смотрит.
 
-			    shop.addItem((player) => \`Heal (\${player.health} HP)\`, { onSelect: heal });
+			    shop.addItem({
+			        title: ({ player }) => \`Heal (\${player.health} HP)\`,
+			        visible: ({ player }) => player.isAlive,
+			        onSelect: ({ player }) => {
+			            player.health = 100;
+			        },
+			    });
 		`,
 	},
 	"Menu.addFixedItem": {
-		en: `Adds an item that takes the same slot on every page: \`slot\` is its key, \`1\` to \`7\`; the text as \`addItem()\` takes it.`,
-		ru: `Добавляет пункт, который на каждой странице занимает один слот: \`slot\` — его клавиша, от \`1\` до \`7\`; текст — как у \`addItem()\`.`,
+		en: `Adds an item that takes the same slot on every page: \`slot\` is its key, \`1\` to \`7\`; the item as \`addItem()\` takes it.`,
+		ru: `Добавляет пункт, который на каждой странице занимает один слот: \`slot\` — его клавиша, от \`1\` до \`7\`; пункт — как у \`addItem()\`.`,
 	},
 	"Menu.clearItems": {
 		en: `Removes every item of the menu, fixed ones too.`,
 		ru: `Удаляет все пункты меню, включая фиксированные.`,
 	},
 	"Menu.addFilter": {
-		en: `A filter of a list menu: rows \`test\` says no to are left out, and \`message\` is said when none is left.`,
-		ru: `Фильтр меню-списка: строки, на которые \`test\` отвечает «нет», пропускаются, а если не осталось ни одной, игрок получает \`message\`.`,
+		en: `A filter of a list menu: rows \`test\` says no to are left out - \`target\` is the row's player - and \`message\` is said when none is left.`,
+		ru: `Фильтр меню-списка: строки, на которые \`test\` отвечает «нет», пропускаются — \`target\` — игрок строки, — а если не осталось ни одной, игрок получает \`message\`.`,
 	},
 	"Menu.addPlaceholder": {
 		en: `A placeholder of this menu, for menu files and Pawn plugins: the text \`%name%\` stands for, before the ones registered with \`addPlaceholder()\`. In code the text is a function instead.`,
@@ -110,6 +124,10 @@ export default {
 			Показывает меню игроку; \`false\`, если оно не открылось — его отменил
 			обработчик \`"show"\`, оно не активно или меню игрока не уступает место.
 		`,
+	},
+	"Menu.runActions": {
+		en: `Runs an action line as a choice in this menu does: space-separated action names, \`CLOSE_MENU\` and \`SHOW_<MENU>\` among them; \`target\` is the player it is about.`,
+		ru: `Выполняет строку действий, как её выполняет выбор в этом меню: имена действий через пробел, в том числе \`CLOSE_MENU\` и \`SHOW_<MENU>\`; \`target\` — игрок, о котором речь.`,
 	},
 	"Menu.refresh": {
 		en: `Draws the menu again for whoever looks at it; the number of players it was drawn for.`,
@@ -236,8 +254,8 @@ export default {
 		ru: `Вызывает \`listener\` на каждое событие меню типа \`type\` — одно из \`"open"\`, \`"close"\` или \`"show"\` (до открытия меню).`,
 	},
 	"listRow": {
-		en: `A row for a list source: its target, text, and optionally an action, a restriction and its message.`,
-		ru: `Строка для источника списка: цель, текст и, если нужно, действие, ограничение и его сообщение.`,
+		en: `A row for a list source: its number - \`row\` of the context its item's functions get - its text, and optionally an action, a restriction and its message.`,
+		ru: `Строка для источника списка: её номер — \`row\` в контексте, который получают функции её пункта, — текст и, если нужно, действие, ограничение и его сообщение.`,
 	},
 	"textRow": {
 		en: `A line of text among a list source's rows; \`centered\` pads it to the middle of the menu.`,
@@ -290,9 +308,5 @@ export default {
 	"hasAction": {
 		en: `Whether an action of that name is registered.`,
 		ru: `Зарегистрировано ли действие с этим именем.`,
-	},
-	"runActions": {
-		en: `Runs an action line: space-separated action names, \`CLOSE_MENU\` and \`SHOW_<MENU>\` among them.`,
-		ru: `Выполняет строку действий: имена действий через пробел, в том числе \`CLOSE_MENU\` и \`SHOW_<MENU>\`.`,
 	},
 };

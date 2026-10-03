@@ -1,7 +1,8 @@
 // Menu Core from TypeScript: the playground's plugins make their menus in
 // code - a menu object with methods; a title, items and messages that are
-// functions of the player; items shown, greyed out and chosen by functions; a
-// list menu with a filter and a listener of its own.
+// functions of the menu's context; items shown, greyed out and chosen by
+// functions; a list menu with a filter and a listener of its own, and one with
+// rows of its own.
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { setup } from "@amxts/core/test-utils";
 import { menusOf } from "../testing";
@@ -79,6 +80,19 @@ describe("a list menu", () => {
 		alice.say("/greet");
 		expect(menus.screen(alice)).toBe(null);
 		expect(alice.chat).toContain("Nobody to greet");
+	});
+
+	test("a list source's rows: the item's functions get the row's number", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice");
+
+		alice.say("/maps");
+		const text = menus.screen(alice)!.text;
+		expect(text).toContain("\\y[1]\\w de_dust2");
+		expect(text).toContain("\\y[3]\\w de_nuke");
+
+		menus.press(alice, 2);
+		expect(alice.chat).toContain("Alice votes for de_inferno");
 	});
 
 	test("the menu's own listener hears it close when the time runs out", async () => {
