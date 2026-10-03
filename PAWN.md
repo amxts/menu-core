@@ -2,7 +2,9 @@
 
 [English](PAWN.md) | [Русский](PAWN.ru.md)
 
-Menu Core serves the 30 natives of `menu_core.inc` (`mc_register_action`, `mc_show_menu`, `mc_add_menu_item` and the rest) with their signatures, so compiled `.amxx` plugins work unchanged. It takes the place of `menu_core.amxx`: comment that one out in `plugins.ini`, since two plugins cannot give the same natives.
+Menu Core serves the 30 natives of `menu_core.inc` (`mc_register_action`, `mc_show_menu`, `mc_add_menu_item` and the rest) with their signatures, so compiled `.amxx` plugins work unchanged.
+
+Pawn plugins write `#include <menu_core>`; the package ships `include/menu_core.inc`. Only one plugin on a server can give these natives: if another Pawn plugin in `plugins.ini` registers `mc_*` natives too, comment it out.
 
 Callbacks are named by their public function, and Menu Core calls them in the plugin that registered them.
 

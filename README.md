@@ -340,7 +340,17 @@ The amxts extension for VS Code checks a menu file as you type — the same chec
 
 ## Pawn plugins
 
-Pawn plugins use Menu Core through the 30 `mc_*` natives of `menu_core.inc`, which the package ships in `include/`; compiled `.amxx` plugins work unchanged. In `plugins.ini` it takes the place of `menu_core.amxx`. When no TypeScript plugin of the project uses the module, `pawn: ["@amxts/menu-core"]` in `amxts.config.ts` keeps it in the build for them. The details: [PAWN.md](PAWN.md).
+A Pawn plugin makes, fills and shows menus through Menu Core too, with its 30 natives whose names start with `mc_`: `mc_register_action`, `mc_show_menu`, `mc_add_menu_item` and the rest. The package ships their include in `include/`:
+
+```pawn
+#include <menu_core>
+```
+
+A Pawn plugin already compiled against this include works as it is, with nothing to rebuild.
+
+Only one plugin on a server can give these natives: if another Pawn plugin in `plugins.ini` registers `mc_*` natives too, comment it out.
+
+Menu Core runs on the server as one of the project's plugins. When no TypeScript plugin of the project uses it, keep it in the build for the Pawn plugins: `pawn: ["@amxts/menu-core"]` in `amxts.config.ts`. Every native with its signature: [PAWN.md](PAWN.md).
 
 ## Testing
 
