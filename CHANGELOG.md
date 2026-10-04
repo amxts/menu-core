@@ -80,4 +80,4 @@ When the plugin that made a menu reloads - a save under `amxts dev`, `amxts_relo
 
 ### ❤️ Contributors
 
-- Ernest Manukyan
+- Ernest Manukyan ([@kukson777](https://github.com/kukson777))
