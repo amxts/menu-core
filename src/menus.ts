@@ -183,6 +183,13 @@ interface ListenerEntry {
 	from: number;
 }
 
+/** A menu whose plugin stopped while someone looked at it, until the next frame tells whether one of its name was made again. */
+interface LeftMenu {
+	menu: Menu;
+	/** Seconds left on its shared countdown; 0 for none. */
+	countdown: number;
+}
+
 const DEFAULTS: Labels = {
 	exit: "Exit",
 	back: "Back",
@@ -213,6 +220,7 @@ const listening = new Set<string>();
 const viewers = new Map<number, Viewer>();
 /** The shared countdown's timer of each menu that has one running, by name. */
 const menuTimers = new Map<string, number>();
+let left: LeftMenu[] = [];
 
 let conditions: ConditionEntry[] = [];
 let actions: ActionEntry[] = [];
@@ -486,8 +494,11 @@ function open(player: Player, name: string, options: MenuShowOptions, target: nu
 export function close(player: Player, timeout = false) {
 	const viewer = viewerOf(player.id);
 	const menu = menuOf(viewer);
-	if (menu == null) return;
+	if (menu != null) shut(player, viewer, menu, timeout);
+}
 
+/** Takes the viewer's menu off his screen and tells its `"close"` listeners. */
+function shut(player: Player, viewer: Viewer, menu: Menu, timeout: boolean) {
 	stopPlayerTimer(viewer);
 	viewer.timer = 0;
 	viewer.locked = false;
@@ -765,7 +776,8 @@ function add(menu: Menu) {
 /**
  * A plugin that called the module stopped: what it gave goes - the menus it
  * made, its items, filters and placeholders in the others, the names it
- * registered and its listeners. A reloaded plugin gives them again.
+ * registered and its listeners. A reloaded plugin gives them again, and a
+ * menu of it someone looks at stays open, drawn from the new load.
  */
 function forget(plugin: number) {
 	conditions = conditions.filter(entry => entry.from != plugin);
@@ -783,12 +795,50 @@ function forget(plugin: number) {
 	}
 }
 
-/** A menu that went: closed for whoever looks at it, its countdown stopped, its name free. */
+/**
+ * A menu that went: its countdown stopped, its name free. Whoever looks at it
+ * keeps it on his screen until the next frame, with no keys that answer -
+ * settle() then draws it again or closes it.
+ */
 function drop(menu: Menu) {
-	for (const player of lookingAt(menu)) close(player);
+	if (lookingAt(menu).length > 0) {
+		if (left.length == 0) setTimeout(settle);
+		left.push({ menu, countdown: menu.countdown });
+	}
 	stopMenuTimer(menu);
 	menuByName.delete(menu.name);
 	forgetState(menu.name);
+}
+
+/**
+ * The frame after a plugin stopped. A menu it left on someone's screen that
+ * was made again - a reload's new load makes it at its top level, its items
+ * right after - is drawn from the new one, on the same page, its countdown
+ * going on; one nobody made again closes.
+ */
+function settle() {
+	const notes = left;
+	left = [];
+	for (const note of notes) {
+		const menu = find(note.menu.name);
+		if (menu != null) reopen(menu, note.countdown);
+		else closeLeft(note.menu);
+	}
+}
+
+/** A menu that went and was not made again: off the screen of whoever still looks at it. */
+function closeLeft(menu: Menu) {
+	for (const player of lookingAt(menu)) shut(player, viewerOf(player.id), menu, false);
+}
+
+/** A menu made again for whoever looked at the one that went: its shared countdown goes on from `countdown`. */
+function reopen(menu: Menu, countdown: number) {
+	if (countdown > 0) {
+		menu.countdown = countdown;
+		menu.sharedTimer = true;
+		startMenuTimer(menu);
+	}
+	refreshMenu(menu);
 }
 
 /** Takes out of a menu the items, filters and placeholders `plugin` gave it; whether there were any. */
