@@ -805,6 +805,7 @@ function drop(menu: Menu) {
 		if (left.length == 0) setTimeout(settle);
 		left.push({ menu, countdown: menu.countdown });
 	}
+
 	stopMenuTimer(menu);
 	menuByName.delete(menu.name);
 	forgetState(menu.name);
@@ -838,6 +839,7 @@ function reopen(menu: Menu, countdown: number) {
 		menu.sharedTimer = true;
 		startMenuTimer(menu);
 	}
+
 	refreshMenu(menu);
 }
 
