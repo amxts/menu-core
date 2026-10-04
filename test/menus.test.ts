@@ -2,8 +2,10 @@
 // code - a menu object with methods; a title, items and messages that are
 // functions of the menu's context; items shown, greyed out and chosen by
 // functions; a list menu with a filter and a listener of its own, and one with
-// rows of its own.
+// rows of its own; and a plugin that stops: a menu of it someone looks at
+// stays open through a reload and closes after an unload.
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import type { FakeServer } from "@amxts/core/test-utils";
 import { setup } from "@amxts/core/test-utils";
 import { menusOf } from "../testing";
 
@@ -109,14 +111,79 @@ describe("a list menu", () => {
 });
 
 describe("a plugin that stops", () => {
-	test("its menu goes; loaded again, it makes the menu once and its functions are called in the new load", async () => {
+	/** The playground's plugin of that file. */
+	function pluginOf(server: FakeServer, file: string) {
+		return server.plugins.find(plugin => plugin.source.endsWith(file))!;
+	}
+
+	/** How many times `part` is in `text`. */
+	function count(text: string, part: string) {
+		return text.split(part).length - 1;
+	}
+
+	test("reloaded, its menu stays open on the same page, drawn from the new load", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice");
+		const weapons = pluginOf(server, "weapons.ts");
+
+		alice.say("/weapons");
+		menus.press(alice, 8);
+		const page = menus.screen(alice)!.text;
+		expect(page).toContain("\\y[\\r2\\y | \\y2\\y]");
+		expect(page).toContain("\\y[3]\\w Famas");
+
+		server.unload(weapons);
+		await server.load(weapons.source);
+		server.advance(100);
+		const text = menus.screen(alice)!.text;
+		expect(text).toBe(page);
+		expect(count(text, "Famas")).toBe(1);
+
+		menus.press(alice, 3);
+		expect(alice.chat).toContain("Bought Famas");
+	});
+
+	test("a key pressed before the next frame calls nothing", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice");
+		const weapons = pluginOf(server, "weapons.ts");
+
+		alice.say("/weapons");
+		server.unload(weapons);
+		menus.press(alice, 1);
+		expect(alice.chat).not.toContain("Bought");
+		expect(menus.screen(alice)).not.toBe(null);
+	});
+
+	test("its countdown goes on through a reload", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice");
+		server.join("Bob");
+		const players = pluginOf(server, "players.ts");
+
+		alice.say("/greet");
+		server.advance(3_000);
+		expect(menus.screen(alice)!.text).toContain("\\r7 \\wsec");
+
+		server.unload(players);
+		await server.load(players.source);
+		server.advance(100);
+		expect(menus.screen(alice)!.text).toContain("\\r7 \\wsec");
+
+		server.advance(7_000);
+		expect(menus.screen(alice)).toBe(null);
+		expect(alice.chat).toContain("Too slow");
+	});
+
+	test("unloaded, its menu closes on the next frame; loaded again, it makes the menu once and its functions are called in the new load", async () => {
 		const { server, menus } = await playground();
 		const alice = server.join("Alice", { health: 40 });
-		const shop = server.plugins.find(plugin => plugin.source.endsWith("shop.ts"))!;
+		const shop = pluginOf(server, "shop.ts");
 
 		alice.say("/shop");
 		expect(menus.screen(alice)).not.toBe(null);
 		server.unload(shop);
+		server.advance(100);
 		expect(menus.screen(alice)).toBe(null);
 
 		await server.load(shop.source);
