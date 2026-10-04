@@ -56,6 +56,7 @@ When the plugin that made a menu reloads - a save under `amxts dev`, `amxts_relo
 
 ### 🩹 Fixes
 
+- The plugin's version is the package's ([a646c2c](https://github.com/amxts/menu-core/commit/a646c2c))
 - Drop what a stopped plugin gave the menus ([fa68648](https://github.com/amxts/menu-core/commit/fa68648))
 
 ### 💅 Refactors
