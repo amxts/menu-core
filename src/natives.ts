@@ -19,7 +19,7 @@ import * as menus from "./index";
 import { addNamedFilter, iniItem, insertItem, stateOf } from "./internal";
 import { MenuShowOptions } from "./types";
 
-plugin({ name: "Menu Core", version: "0.2.0", author: "kukson777", description: "Menus from ini files: the mc_* natives" });
+plugin({ name: "Menu Core", version: "0.2.1", author: "kukson777", description: "Menus from ini files: the mc_* natives" });
 
 /**
  * Menu properties: mc_set_menu_property takes MP_LOCKED .. MP_HIDE_EXIT,
