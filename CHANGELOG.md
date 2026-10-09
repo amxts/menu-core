@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.3.0
+
+[compare changes](https://github.com/amxts/menu-core/compare/v0.2.1...v0.3.0)
+
+### Summary
+
+For amxts 0.3: needs `@amxts/core` 0.3 and `@amxts/config-core` 0.2 - `addActions` and `addPlaceholders` take several at once and `register` several names, which cross between plugins from 0.3 on. Pawn's `menu_core` files with an `[Основное]` section read as they do there.
+
+### 🚀 Enhancements
+
+- **menus:** Several menus, actions and placeholders at once ([8a9794c](https://github.com/amxts/menu-core/commit/8a9794c))
+- **menus:** ADMIN and `ACCESS_ADMIN` built in ([5ef9c8a](https://github.com/amxts/menu-core/commit/5ef9c8a))
+
+### 🩹 Fixes
+
+- **menus:** The Pawn `menu_core`'s [Основное] is [MAIN] ([be951c2](https://github.com/amxts/menu-core/commit/be951c2))
+- **menus:** Show the menu a player is on from its start ([c6afcaf](https://github.com/amxts/menu-core/commit/c6afcaf))
+
+### 💅 Refactors
+
+- `player.print`, not the free print ([2622715](https://github.com/amxts/menu-core/commit/2622715))
+
+### 📖 Documentation
+
+- A list menu's example that runs on every core ([ba519eb](https://github.com/amxts/menu-core/commit/ba519eb))
+
+### ❤️ Contributors
+
+- Ernest Manukyan ([@kukson777](https://github.com/kukson777))
+
 ## v0.2.1
 
 [compare changes](https://github.com/amxts/menu-core/compare/v0.2.0...v0.2.1)
