@@ -94,7 +94,7 @@ describe("a list menu", () => {
 		expect(text).toContain("\\y[3]\\w de_nuke");
 
 		menus.press(alice, 2);
-		expect(alice.chat).toContain("Alice votes for de_inferno");
+		expect(alice.chat).toContain("You vote for de_inferno");
 	});
 
 	test("the menu's own listener hears it close when the time runs out", async () => {
