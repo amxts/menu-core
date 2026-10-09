@@ -308,6 +308,10 @@ export interface Viewer {
 	/** The name of the menu he looks at; "" for none. */
 	menu: string;
 	page: number;
+	/** The page setPage() asked for, drawn at the next show; -1 for none. */
+	nextPage: number;
+	/** The menu whose item he chose, while its action runs; "" otherwise. */
+	choosing: string;
 	target: number;
 	history: HistoryStep[];
 	slots: ShownSlot[];

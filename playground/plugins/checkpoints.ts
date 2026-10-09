@@ -19,6 +19,7 @@ menus.addActions({
 		saved.delete(player.id);
 	},
 	CP_WHERE: ({ player, menu }) => print(player, `You are in ${menu.name}`),
+	CP_AGAIN: player => menus.show(player, "CP_MENU"),
 });
 menus.addPlaceholders({
 	saved: player => `${savedBy(player)}`,

@@ -245,3 +245,40 @@ describe("menus of the menu file, answered by name", () => {
 		expect(server.log).toContain("[SETTINGS] is not a menu: it has no TITLE, ITEMS or VIEW");
 	});
 });
+
+describe("the menu he is on, shown again", () => {
+	// Nine items: two pages; the last one shows the menu again from its own item.
+	const items = Array.from({ length: 9 }, (_, i) => `\t"Item ${i + 1}" "" "" "${i == 8 ? "CP_AGAIN" : "CP_SAVE"}" "" "" ""`);
+	const MENU_INI = ["[CP_MENU]", "TITLE = Checkpoints", "ITEMS = {", ...items, "}", ""].join("\r\n");
+
+	async function checkpoints() {
+		const server = await setup({ rootDir: "playground", files: { "addons/amxmodx/configs/menu.ini": MENU_INI } });
+		return { server, menus: menusOf(server) };
+	}
+
+	test("from a command it opens anew, at its first page; from its own item it stays on its page", async () => {
+		const { server, menus } = await checkpoints();
+		const alice = server.join("Alice");
+
+		alice.say("/cp");
+		menus.press(alice, 8);
+		expect(menus.screen(alice)!.text).toContain("Item 8");
+		alice.say("/cp");
+		expect(menus.screen(alice)!.text).toContain("Item 1");
+
+		menus.press(alice, 8);
+		menus.press(alice, 2);
+		expect(menus.screen(alice)!.text).toContain("Item 9");
+	});
+
+	test("the page setPage asked for is the one the next show draws", async () => {
+		const { server, menus } = await checkpoints();
+		const plugin = menus.pawnPlugin("myplugin.amxx", {});
+		const alice = server.join("Alice");
+
+		alice.say("/cp");
+		plugin.native("mc_set_menu_page", alice.id, 1);
+		alice.say("/cp");
+		expect(menus.screen(alice)!.text).toContain("Item 8");
+	});
+});

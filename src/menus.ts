@@ -272,6 +272,7 @@ server.addEventListener("putInServer", (event) => {
 	viewer.menu = "";
 	viewer.history = [];
 	viewer.page = 0;
+	viewer.nextPage = -1;
 	viewer.locked = false;
 });
 
@@ -473,11 +474,18 @@ export function textRow(text: string, centered = false) {
  * it is not active, or the player's menu holds on.
  */
 export function show(player: Player, name: string, options: MenuShowOptions = {}) {
-	return open(player, name, options, options.target?.id ?? 0);
+	const viewer = viewerOf(player.id);
+	// The menu he is on, shown from anywhere but its own item - a command, a
+	// timer - opens anew, at its first page; from its item it stays on its page.
+	const anew = viewer.menu == name && viewer.choosing != name;
+	return open(player, name, options, options.target?.id ?? 0, anew);
 }
 
-/** Shows a menu about `target`, a number: a player's `id`, or what a Pawn plugin gave - `0` for none. */
-function open(player: Player, name: string, options: MenuShowOptions, target: number) {
+/**
+ * Shows a menu about `target`, a number: a player's `id`, or what a Pawn
+ * plugin gave - `0` for none. `anew`: the menu he is on starts at its first page.
+ */
+function open(player: Player, name: string, options: MenuShowOptions, target: number, anew = false) {
 	if (!player.isConnected) return false;
 	const viewer = viewerOf(player.id);
 	const menu = menuNamed(name);
@@ -505,7 +513,7 @@ function open(player: Player, name: string, options: MenuShowOptions, target: nu
 
 	if (viewer.depth >= MAX_DEPTH) return false;
 	viewer.depth++;
-	const shown = draw(player, viewer, menu, options, target);
+	const shown = draw(player, viewer, menu, options, target, anew);
 	viewer.depth--;
 	return shown;
 }
@@ -578,7 +586,7 @@ export function isLocked(player: Player) {
 
 /** Sets the page the player's menu is drawn at next, from `0`. */
 export function setPage(player: Player, page: number) {
-	viewerOf(player.id).page = page;
+	viewerOf(player.id).nextPage = page;
 }
 
 /** Whether an action of that name is registered. */
@@ -974,7 +982,7 @@ function usesCondition(menu: Menu, name: string) {
 
 function viewerOf(id: number) {
 	if (!viewers.has(id)) {
-		const made: Viewer = { menu: "", page: 0, target: 0, history: [], slots: [], rows: 0, text: "", locked: false, timer: 0, ticker: 0, depth: 0 };
+		const made: Viewer = { menu: "", page: 0, nextPage: -1, choosing: "", target: 0, history: [], slots: [], rows: 0, text: "", locked: false, timer: 0, ticker: 0, depth: 0 };
 		viewers.set(id, made);
 	}
 
@@ -1023,7 +1031,7 @@ function isVisible(item: MenuItem, player: Player, target: number, menu: Menu) {
 	return check == null || passes(check, player, player.id, target, menu);
 }
 
-function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptions, target: number) {
+function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptions, target: number, anew: boolean) {
 	// A list menu nobody is left in does not open, and nothing of the viewer's changes.
 	const listing = menu.kind == "list" ? listOf(player, menu, target) : noListing();
 
@@ -1060,7 +1068,12 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 	if (!given) timer = menu.countdown > 0 ? menu.countdown : viewer.timer;
 	if (timer <= 0) timer = menu.time;
 
-	if (!returning && !options.skipHistory && back < 0) viewer.page = 0;
+	if (viewer.nextPage >= 0) {
+		viewer.page = viewer.nextPage;
+		viewer.nextPage = -1;
+	} else if (anew || (!returning && !options.skipHistory && back < 0)) {
+		viewer.page = 0;
+	}
 
 	const items = menu.kind == "list" ? noItems() : shownItems(player, viewer, menu);
 	const total = menu.kind == "list" ? listing.count : items.length;
@@ -1463,7 +1476,9 @@ function pressed(player: Player, key: number) {
 
 	const slot = viewer.slots[key];
 	if (slot.action.length == 0) return;
+	viewer.choosing = menu.name;
 	run(player, slot.action, slot.target, menu);
+	viewer.choosing = "";
 	if (viewer.menu == menu.name) open(player, menu.name, {}, viewer.target);
 }
 
