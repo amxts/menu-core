@@ -17,6 +17,7 @@ For amxts 0.3: needs `@amxts/core` 0.3 and `@amxts/config-core` 0.2 - `addAction
 
 - **menus:** The Pawn `menu_core`'s [Основное] is [MAIN] ([be951c2](https://github.com/amxts/menu-core/commit/be951c2))
 - **menus:** Show the menu a player is on from its start ([c6afcaf](https://github.com/amxts/menu-core/commit/c6afcaf))
+- The plugin says its version, `0.3.0` ([9d471a8](https://github.com/amxts/menu-core/commit/9d471a8))
 
 ### 💅 Refactors
 
