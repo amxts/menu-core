@@ -597,7 +597,7 @@ function iniMenu(section: ConfigNode) {
 	const content = section.has("ITEMS") || section.has("VIEW") || section.has("FIXED_ITEMS");
 
 	if (title.length == 0) {
-		if (content) warn(whereOf(section), `[${name}] has no TITLE, so it is not a menu`);
+		warn(whereOf(section), content ? `[${name}] has no TITLE, so it is not a menu` : `[${name}] is not a menu: it has no TITLE, ITEMS or VIEW`);
 		return null;
 	}
 
@@ -633,12 +633,20 @@ function iniMenu(section: ConfigNode) {
 	return withItems(menu, whereOf(section));
 }
 
-/** An INI menu file: [MAIN] with the words, a [section] a menu. */
+// The Pawn menu_core reads its words from [Основное]: a file written for it is read as it is.
+const INI_MAIN_SECTIONS = ["MAIN", "Основное"];
+
+/** Whether a section of an INI menu file is the one with the words. */
+function isMainSection(section: ConfigNode) {
+	return INI_MAIN_SECTIONS.includes(section.key) || section.key.toUpperCase() == "MAIN";
+}
+
+/** An INI menu file: [MAIN] (or the Pawn menu_core's [Основное]) with the words, a [section] a menu. */
 function readIni(root: ConfigNode, file: MenuFile) {
-	const main = root.get("MAIN");
+	const main = root.values().find(isMainSection);
 
 	if (main != null && main.kind == "object") {
-		checkKeys(main, INI_MAIN_KEYS, "[MAIN]", true);
+		checkKeys(main, INI_MAIN_KEYS, `[${main.key}]`, true);
 		file.labels.prefix = fileText(first(main.get("PREFIX")), whereOf(main));
 		const key = main.get("KEY");
 		if (key != null && key.kind == "object") checkKeys(key, INI_LABEL_KEYS, "KEY", true);
@@ -646,7 +654,7 @@ function readIni(root: ConfigNode, file: MenuFile) {
 	}
 
 	for (const section of root.values()) {
-		if (section.key.toUpperCase() == "MAIN" || section.kind != "object") continue;
+		if (isMainSection(section) || section.kind != "object") continue;
 		const menu = iniMenu(section);
 		if (menu != null) file.menus.push(menu);
 	}

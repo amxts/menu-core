@@ -145,6 +145,7 @@ describe("the shape of an INI menu file", () => {
 			`${CONFIGS}/menu.ini:14: [NO_TITLE] has no TITLE, so it is not a menu`,
 			`${CONFIGS}/menu.ini:20: a list menu draws its rows with VIEW - ITEMS is not read`,
 			`${CONFIGS}/menu.ini:24: the slot of a fixed item is its key, 1 to 7, not "8"`,
+			`${CONFIGS}/menu.ini:26: [OTHER] is not a menu: it has no TITLE, ITEMS or VIEW`,
 		]);
 	});
 });
