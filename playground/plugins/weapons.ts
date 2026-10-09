@@ -5,7 +5,7 @@ const weapons = ["AK-47", "M4A1", "AWP", "Deagle", "USP", "Glock", "MP5", "P90",
 // Seven items a page: the last three are on the second.
 const shop = menus.create("WEAPONS", { title: "Weapon shop" });
 for (const weapon of weapons) {
-	shop.addItem({ title: weapon, onSelect: ({ player }) => print(player, `Bought ${weapon}`) });
+	shop.addItem({ title: weapon, onSelect: ({ player }) => player.print(`Bought ${weapon}`) });
 }
 
 server.addCommand("/weapons", ({ player }) => {

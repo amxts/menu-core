@@ -2,7 +2,7 @@
  * Menu Core's menus: the Menu object, the functions of the module, and how a
  * menu is drawn and chosen from.
  */
-import { accessOf, Forward, Player, clearInterval, lang, print, server, setInterval, setTimeout } from "@amxts/core";
+import { accessOf, Forward, Player, clearInterval, lang, server, setInterval, setTimeout } from "@amxts/core";
 import { callingPlugin, onPluginStop, publicFor, showMenu } from "@amxts/core/kit";
 import { GetLangTransKey, get_maxplayers, register_menucmd, register_menuid } from "@amxts/core/natives";
 import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuContext, MenuEventType, MenuItemOptions, MenuKind, MenuOptions, MenuShowOptions, NamedContext, PlaceholderValue, RestrictionTest, RowTest } from "./types";
@@ -1448,7 +1448,7 @@ function sayEmpty(player: Player, menu: Menu) {
 }
 
 function say(player: Player, message: string) {
-	print(player, `${ui(player.id, labels.prefix, DEFAULTS.prefix)} ${translate(player.id, message)}`);
+	player.print(`${ui(player.id, labels.prefix, DEFAULTS.prefix)} ${translate(player.id, message)}`);
 }
 
 function pressed(player: Player, key: number) {

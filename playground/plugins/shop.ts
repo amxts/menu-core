@@ -10,7 +10,7 @@ shop.addItem({
 	visible: ({ player }) => player.health < 100,
 	onSelect: ({ player }) => {
 		player.health = 100;
-		print(player, "Healed");
+		player.print("Healed");
 	},
 });
 shop.addItem({

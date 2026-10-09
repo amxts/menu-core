@@ -6,11 +6,11 @@ const players = menus.create("LIST_PLAYERS", { title: "Who to greet" });
 players.addFilter(({ player, target }) => target.id != player.id && target.isAlive, "Nobody to greet");
 players.addItem({
 	title: ({ target }) => `${target.name} (${target.health} HP)`,
-	onSelect: ({ player, target }) => print(target, `${player.name} says hello`),
+	onSelect: ({ player, target }) => target.print(`${player.name} says hello`),
 });
 
 players.addEventListener("close", (event) => {
-	if (event.timeout) print(event.player, "Too slow");
+	if (event.timeout) event.player.print("Too slow");
 });
 
 server.addCommand("/greet", ({ player }) => {
