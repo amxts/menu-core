@@ -161,9 +161,9 @@ Its fields — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` 
 | Function | What it does |
 | --- | --- |
 | `create(name, options?)` | A menu in code, or the existing one with that name. A name starting with `LIST_` makes a list menu. Options: `title` (text or a function), `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
-| `find(name)` · `register(name)` | A menu by its name; `register` reads it from the file ahead of time. |
+| `find(name)` · `register(...names)` | A menu by its name; `register` reads them from the file ahead of time: `register("MAIN_MENU", "ADMIN_MENU")`. |
 | `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | The player's menu, whichever it is. |
-| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | What menu files and Pawn plugins name, answered by functions — `%name%` in their text is a placeholder. An action, a placeholder and a restriction get the menu's context and the `name` they are asked by; a condition, `(player, viewer, name)`, is asked of the row's player in a list menu. A restriction's `message` is said beside an item it greys out, unless the item or the requirement has its own. `menu.addPlaceholder(name, value)` gives one to a single menu. |
+| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` · `addActions({ NAME: handler })` · `addPlaceholders({ name: value })` | What menu files and Pawn plugins name, answered by functions — `%name%` in their text is a placeholder; `addActions` and `addPlaceholders` take several at once. An action or a placeholder is a function of the player, `(player) => ...`, or of the menu's context. An action, a placeholder and a restriction get the menu's context and the `name` they are asked by; a condition, `(player, viewer, name)`, is asked of the row's player in a list menu. A restriction's `message` is said beside an item it greys out, unless the item or the requirement has its own. `menu.addPlaceholder(name, value)` gives one to a single menu. |
 | `setListSource(name, rows)` · `refresh("A B")` · `conditionChanged(name)` · `addEventListener(type, listener)` | The same for menus by name, and every menu's events. |
 
 ## Menus in a file
@@ -280,7 +280,7 @@ VIEW = {
 
 | YAML, JSON | INI | What it is |
 | --- | --- | --- |
-| `chatPrefix` | `[MAIN]` `PREFIX` | The chat prefix of Menu Core's messages. |
+| `chatPrefix` | `[MAIN]` `PREFIX` | The chat prefix of Menu Core's messages. The Pawn menu_core's `[Основное]` is read as `[MAIN]`. |
 | `labels`: `exit`, `back`, `next`, `number`, `disabled`, `page`, `time` | `[MAIN]` `KEY = { ... }` | The words of the buttons, the page and the countdown. |
 | `menus`: `{ NAME: menu }` | `[NAME]` | The menus; a name starting with `LIST_` is a list menu. |
 | `title` | `TITLE` | The title; a menu has one. |

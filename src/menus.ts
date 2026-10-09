@@ -310,8 +310,18 @@ export function menuAt(index: number) {
 	return find(menus[index].name);
 }
 
-/** The menu of that name in the menu file, read now if it is not yet; `null` when the file has no such menu, or no items in it. */
-export function register(name: string) {
+/**
+ * The menus of those names in the menu file, read now if they are not yet:
+ * `menus.register("SHOP", "SHOP_GUNS")`. Returns the first one's menu;
+ * `null` when the file has no such menu, or no items in it.
+ */
+export function register(...names: string[]) {
+	const found = names.map(registerOne);
+	return found.length > 0 ? found[0] : null;
+}
+
+/** The menu of that name in the menu file, read now if it is not yet; `null` when the file has none. */
+function registerOne(name: string) {
 	const known = find(name);
 	if (known != null) return known;
 	const spec = loadedFile().menus.find(each => each.name == name);
@@ -386,6 +396,16 @@ export function addCondition(name: string, test: ConditionTest) {
 export function addAction(name: string, run: ActionHandler) {
 	actions.push({ name, run, from: callingPlugin() });
 	return actions.length - 1;
+}
+
+/** Registers actions by name, for menu files and Pawn plugins: `menus.addActions({ SHOP_HEAL: heal, SHOP_ARMOR: (player) => player.armor = 100 })`. */
+export function addActions(actions: Record<string, ActionHandler>) {
+	for (const [name, run] of Object.entries(actions)) addAction(name, run);
+}
+
+/** Registers placeholders for menu files and Pawn plugins: `menus.addPlaceholders({ nick: (player) => player.name })`. A name registered twice keeps the first. */
+export function addPlaceholders(placeholders: Record<string, PlaceholderValue>) {
+	for (const [name, value] of Object.entries(placeholders)) addPlaceholder(name, value);
 }
 
 /** Registers a placeholder for menu files and Pawn plugins: the text `%name%` stands for in titles and items. A name registered twice keeps the first. In code the text is a function instead. */
@@ -593,7 +613,8 @@ function contextOf(player: Player, target: number, menu: Menu) {
 /** The context a function registered by name gets: the menu's, and the name it is asked by. */
 function namedContextOf(player: Player, target: number, menu: Menu, name: string) {
 	const context: NamedContext = { player, target: playerOr(target, player), row: target, menu, name };
-	return context;
+	// What an action or a placeholder takes: the context, or its player for a function of the player - the compiler hands it that.
+	return context as NamedContext & Player;
 }
 
 /** The player a target numbers; `fallback` for none. */
@@ -966,7 +987,7 @@ function menuOf(viewer: Viewer) {
 }
 
 function menuNamed(name: string) {
-	return find(name) ?? register(name);
+	return find(name) ?? registerOne(name);
 }
 
 function lookingAt(menu: Menu) {

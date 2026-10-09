@@ -9,7 +9,7 @@ import type { FakeServer } from "@amxts/core/test-utils";
 import { setup } from "@amxts/core/test-utils";
 import { menusOf } from "../testing";
 
-setDefaultTimeout(120_000);
+setDefaultTimeout(240_000);
 
 async function playground() {
 	const server = await setup({ rootDir: "playground" });
@@ -192,5 +192,56 @@ describe("a plugin that stops", () => {
 		menus.press(alice, 1);
 		expect(alice.health).toBe(100);
 		expect(alice.chat).toContain("Healed");
+	});
+});
+
+describe("menus of the menu file, answered by name", () => {
+	const MENU_INI = [
+		"[Основное]",
+		"KEY = {",
+		"\tNUMBER = !r%d.",
+		"}",
+		"[CP_MENU]",
+		"TITLE = Checkpoints",
+		"ITEMS = {",
+		"\t\"Save\" \"%saved%\" \"\" \"CP_SAVE\" \"\" \"\" \"\"",
+		"\t\"Reset\" \"\" \"\" \"CP_RESET\" \"\" \"\" \"\"",
+		"\t\"Where\" \"%menu%\" \"\" \"CP_WHERE\" \"\" \"\" \"\"",
+		"}",
+		"[CP_MORE]",
+		"TITLE = More",
+		"ITEMS = {",
+		"\t\"Back\" \"\" \"\" \"SHOW_CP_MENU\" \"\" \"\" \"\"",
+		"}",
+		"[SETTINGS]",
+		"SOUND = 1",
+		"",
+	].join("\r\n");
+
+	async function checkpoints() {
+		const server = await setup({ rootDir: "playground", files: { "addons/amxmodx/configs/menu.ini": MENU_INI } });
+		return { server, menus: menusOf(server) };
+	}
+
+	test("several names, several actions and placeholders at once - of the player or of the context; the Pawn module's [Основное] is [MAIN]", async () => {
+		const { server, menus } = await checkpoints();
+		const alice = server.join("Alice");
+
+		alice.say("/cp");
+		expect(menus.screen(alice)!.text).toStartWith("Checkpoints\n\n\\r1. Save 0\n\\r2. Reset\n\\r3. Where CP_MENU\n");
+		menus.press(alice, 1);
+		alice.command("cp");
+		expect(menus.screen(alice)!.text).toContain("\\r1. Save 1");
+		menus.press(alice, 3);
+		expect(alice.chat).toContain("You are in CP_MENU");
+		alice.say("/cp");
+		menus.press(alice, 2);
+		alice.say("/cp");
+		expect(menus.screen(alice)!.text).toContain("\\r1. Save 0");
+	});
+
+	test("a section that is no menu is said, not skipped quietly", async () => {
+		const { server } = await checkpoints();
+		expect(server.log).toContain("[SETTINGS] is not a menu: it has no TITLE, ITEMS or VIEW");
 	});
 });

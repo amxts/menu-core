@@ -155,10 +155,10 @@ export interface Requirement {
 
 /** A condition's test, as `addCondition()` registers it. In a list menu `player` is the row's player and `viewer` whoever looks. */
 export type ConditionTest = (player: Player, viewer: Player, name: string) => boolean;
-/** An action, as `addAction()` registers it: run with the context of the item chosen, and the action's name. */
-export type ActionHandler = (context: NamedContext) => void;
-/** A placeholder's value: the text `%name%` stands for, given the context of the text it is in. */
-export type PlaceholderValue = (context: NamedContext) => string;
+/** An action, as `addAction()` registers it: run with the context of the item chosen and the action's name - `({ player, menu }) => ...` - or with the player who chose it, `(player) => ...`. */
+export type ActionHandler = (context: NamedContext & Player) => void;
+/** A placeholder's value: the text `%name%` stands for, given the context of the text it is in - `({ player, target }) => ...` - or the player who reads it, `(player) => ...`. */
+export type PlaceholderValue = (context: NamedContext & Player) => string;
 /** A restriction's test, as `addRestriction()` registers it; `name` is the whole token, `"NAME:param"` included. */
 export type RestrictionTest = (context: NamedContext) => boolean;
 /** A test of an item's action, as `addActionCheck()` registers it: `name` is the action, and `false` greys the item out. */

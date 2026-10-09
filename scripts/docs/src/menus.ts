@@ -204,8 +204,16 @@ export default {
 		ru: `Меню с этим номером среди всех — обратное к \`indexOf()\`; \`null\`, если такого нет.`,
 	},
 	"register": {
-		en: `The menu of that name in the menu file, read now if it is not yet; \`null\` when the file has no such menu, or no items in it.`,
-		ru: `Меню с этим именем из файла меню, прочитанное сейчас, если ещё не прочитано; \`null\`, если такого меню в файле нет или в нём нет пунктов.`,
+		en: `
+			The menus of those names in the menu file, read now if they are not yet:
+			\`menus.register("SHOP", "SHOP_GUNS")\`. Returns the first one's menu;
+			\`null\` when the file has no such menu, or no items in it.
+		`,
+		ru: `
+			Меню с этими именами из файла меню, прочитанные сейчас, если ещё не
+			прочитаны: \`menus.register("SHOP", "SHOP_GUNS")\`. Возвращает меню первого;
+			\`null\`, если такого меню в файле нет или в нём нет пунктов.
+		`,
 	},
 	"create": {
 		en: `
@@ -224,6 +232,14 @@ export default {
 	"addAction": {
 		en: `Registers an action by name, for menu files and Pawn plugins; \`SHOW_<MENU>\` and \`CLOSE_MENU\` are built in.`,
 		ru: `Регистрирует действие по имени — для файлов меню и Pawn-плагинов; \`SHOW_<MENU>\` и \`CLOSE_MENU\` встроены.`,
+	},
+	"addActions": {
+		en: `Registers actions by name, for menu files and Pawn plugins: \`menus.addActions({ SHOP_HEAL: heal, SHOP_ARMOR: (player) => player.armor = 100 })\`.`,
+		ru: `Регистрирует действия по именам — для файлов меню и Pawn-плагинов: \`menus.addActions({ SHOP_HEAL: heal, SHOP_ARMOR: (player) => player.armor = 100 })\`.`,
+	},
+	"addPlaceholders": {
+		en: `Registers placeholders for menu files and Pawn plugins: \`menus.addPlaceholders({ nick: (player) => player.name })\`. A name registered twice keeps the first.`,
+		ru: `Регистрирует плейсхолдеры для файлов меню и Pawn-плагинов: \`menus.addPlaceholders({ nick: (player) => player.name })\`. Если имя зарегистрировано дважды, остаётся первое.`,
 	},
 	"addPlaceholder": {
 		en: `Registers a placeholder for menu files and Pawn plugins: the text \`%name%\` stands for in titles and items. A name registered twice keeps the first. In code the text is a function instead.`,

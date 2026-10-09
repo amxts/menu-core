@@ -161,9 +161,9 @@ vote.addItem({
 | Функция | Что делает |
 | --- | --- |
 | `create(name, options?)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. Опции: `title` (текст или функция), `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
-| `find(name)` · `register(name)` | Меню по имени; `register` заранее читает его из файла. |
+| `find(name)` · `register(...names)` | Меню по имени; `register` заранее читает их из файла: `register("MAIN_MENU", "ADMIN_MENU")`. |
 | `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | Меню игрока, какое бы оно ни было. |
-| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` | То, что называют файлы меню и Pawn-плагины, — ответы функциями; `%name%` в их тексте — плейсхолдер. Действие, плейсхолдер и ограничение получают контекст меню и имя `name`, по которому их спросили; условие, `(player, viewer, name)`, в меню-списке спрашивается об игроке строки. `message` ограничения пишется рядом с пунктом, который оно гасит, если у пункта или требования нет своего. `menu.addPlaceholder(name, value)` задаёт его одному меню. |
+| `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` · `addActions({ NAME: handler })` · `addPlaceholders({ name: value })` | То, что называют файлы меню и Pawn-плагины, — ответы функциями; `%name%` в их тексте — плейсхолдер; `addActions` и `addPlaceholders` принимают несколько сразу. Действие или плейсхолдер — функция игрока, `(player) => ...`, или контекста меню. Действие, плейсхолдер и ограничение получают контекст меню и имя `name`, по которому их спросили; условие, `(player, viewer, name)`, в меню-списке спрашивается об игроке строки. `message` ограничения пишется рядом с пунктом, который оно гасит, если у пункта или требования нет своего. `menu.addPlaceholder(name, value)` задаёт его одному меню. |
 | `setListSource(name, rows)` · `refresh("A B")` · `conditionChanged(name)` · `addEventListener(type, listener)` | То же для меню по имени и события всех меню. |
 
 ## Меню в файле
@@ -280,7 +280,7 @@ VIEW = {
 
 | YAML, JSON | INI | Что это |
 | --- | --- | --- |
-| `chatPrefix` | `[MAIN]` `PREFIX` | Префикс сообщений Menu Core в чате. |
+| `chatPrefix` | `[MAIN]` `PREFIX` | Префикс сообщений Menu Core в чате. `[Основное]` из Pawn-модуля menu_core читается как `[MAIN]`. |
 | `labels`: `exit`, `back`, `next`, `number`, `disabled`, `page`, `time` | `[MAIN]` `KEY = { ... }` | Слова кнопок, страницы и отсчёта. |
 | `menus`: `{ NAME: меню }` | `[NAME]` | Меню; имя на `LIST_` — меню-список. |
 | `title` | `TITLE` | Заголовок; он у меню обязателен. |

@@ -270,12 +270,12 @@ export default {
 		ru: `Проверка условия, как её регистрирует \`addCondition()\`. В меню-списке \`player\` — игрок строки, \`viewer\` — тот, кто смотрит.`,
 	},
 	"ActionHandler": {
-		en: `An action, as \`addAction()\` registers it: run with the context of the item chosen, and the action's name.`,
-		ru: `Действие, как его регистрирует \`addAction()\`: выполняется с контекстом выбранного пункта и именем действия.`,
+		en: `An action, as \`addAction()\` registers it: run with the context of the item chosen and the action's name - \`({ player, menu }) => ...\` - or with the player who chose it, \`(player) => ...\`.`,
+		ru: `Действие, как его регистрирует \`addAction()\`: выполняется с контекстом выбранного пункта и именем действия — \`({ player, menu }) => ...\` — или с игроком, который его выбрал, \`(player) => ...\`.`,
 	},
 	"PlaceholderValue": {
-		en: `A placeholder's value: the text \`%name%\` stands for, given the context of the text it is in.`,
-		ru: `Значение плейсхолдера: текст, которым заменяется \`%name%\`, по контексту текста, в котором он стоит.`,
+		en: `A placeholder's value: the text \`%name%\` stands for, given the context of the text it is in - \`({ player, target }) => ...\` - or the player who reads it, \`(player) => ...\`.`,
+		ru: `Значение плейсхолдера: текст, которым заменяется \`%name%\`, по контексту текста, в котором он стоит, — \`({ player, target }) => ...\` — или по игроку, который его читает, \`(player) => ...\`.`,
 	},
 	"RestrictionTest": {
 		en: `A restriction's test, as \`addRestriction()\` registers it; \`name\` is the whole token, \`"NAME:param"\` included.`,
