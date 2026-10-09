@@ -22,8 +22,8 @@ A plugin compiled against it gets a tag warning for a bare number where `MenuPro
 - `mc_get_menu_property_string(idx, MP_SECTION)` gives the menu's section.
 - A condition filter applies wherever the condition is asked.
 - A restriction's `message` is shown beside an item it greys out when the item has no message of its own.
-- `IS_ALIVE`, `IS_DEAD`, `TEAM_<team>`, `IS_BOT`, `IS_ADMIN` and `FLAG_<letters>` are built-in conditions, answered while no plugin registers the name. A plugin that registers one of them answers instead.
-- `ADMIN` and `ACCESS_ADMIN` are not built in: they are names like any other, and a menu that uses them needs a plugin that registers them (`mc_register_condition`, `mc_register_restriction`). Otherwise the check says the name is not registered and suggests `IS_ADMIN`. Without a plugin, write `IS_ADMIN` (any admin) or `FLAG_<letters>` (`FLAG_dluy`: ban, rcon, admin or menu access).
+- `IS_ALIVE`, `IS_DEAD`, `TEAM_<team>`, `IS_BOT`, `IS_ADMIN`, `ADMIN`, `ACCESS_ADMIN` and `FLAG_<letters>` are built-in conditions, answered while no plugin registers the name. A plugin that registers one of them answers instead.
+- `ADMIN` and `ACCESS_ADMIN`, as conditions and as restrictions, hold for ban, rcon, admin or menu access (`FLAG_dluy`), as in the Pawn menu_core.
 - A restriction `NAME:text` takes the rest of the line, spaces and all, as its text; names before it are restrictions of their own.
 - Closing a menu because another opens over it tells the close callbacks its name.
 - A locked menu greys out the items of any menu, not only list rows.

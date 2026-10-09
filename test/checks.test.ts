@@ -230,7 +230,7 @@ describe("names nobody registered", () => {
 		"    title: \"%who% menu\"",
 		"    activeOn: [IS_ALIVE, \"!IS_SPECTATR\"]",
 		"    items:",
-		"      - { name: Admin, action: SHOW_ADMN_MENU, enabled: \"ADMIN VIP:5\" }",
+		"      - { name: Admin, action: SHOW_ADMN_MENU, enabled: \"ALIVE VIP:5\" }",
 		"      - { name: Flags, visible: FLAG_abc, action: [RUN, CLOSE_MENU, SHOW_CODE_MENU] }",
 		"      - { name: \"%hp% HP\", action: RUN_AWAY, enabled: LEVEL }",
 		"  ADMIN_MENU:",
@@ -256,7 +256,7 @@ describe("names nobody registered", () => {
 			`${at(3, 5)}: MAIN_MENU: the placeholder %who% is not registered`,
 			`${at(4, 5)}: MAIN_MENU: the condition "IS_SPECTATR" is not registered - did you mean "IS_SPECTATOR"?`,
 			`${at(6, 24)}: MAIN_MENU: SHOW_ADMN_MENU opens the menu "ADMN_MENU", which is not there - did you mean "ADMIN_MENU"?`,
-			`${at(6, 48)}: MAIN_MENU: the condition "ADMIN" is not registered - did you mean "IS_ADMIN"?`,
+			`${at(6, 48)}: MAIN_MENU: the condition "ALIVE" is not registered - did you mean "IS_ALIVE"?`,
 			`${at(6, 48)}: MAIN_MENU: the condition "VIP" is not registered`,
 			`${at(8, 28)}: MAIN_MENU: the action "RUN_AWAY" is not registered`,
 			`${at(8, 46)}: MAIN_MENU: the condition "LEVEL" is not registered`,
@@ -387,17 +387,21 @@ describe("a line of names that says less than it seems", () => {
 		expect(warnings()).toEqual([]);
 	});
 
-	test("ADMIN and ACCESS_ADMIN nobody registered are not built in - IS_ADMIN is the one for ADMIN", async () => {
-		const { server, menus, plugin, warnings } = await boot({ "menu.yaml": "menus:\n  M:\n    title: M\n    activeOn: ADMIN ACCESS_ADMIN\n    items: [{ name: a, action: CLOSE_MENU }]\n" });
+	// The Pawn menu_core answered them itself: a menu.ini written for it shows its admin items.
+	test("ADMIN and ACCESS_ADMIN are built in, as conditions and restrictions: ban, rcon, admin or menu access", async () => {
+		const ini = "[M]\nTITLE = M\nITEMS = {\n\t\"Kick\" \"\" \"ACCESS_ADMIN\" \"CLOSE_MENU\" \"ADMIN\" \"\" \"\"\n\t\"Ban\" \"\" \"\" \"CLOSE_MENU\" \"ADMIN\" \"\" \"\"\n}\n";
+		const { server, menus, plugin, warnings } = await boot({ "menu.ini": ini });
 		plugin.native("mc_register_menu", "M");
 		server.advance(0);
-		expect(warnings()).toEqual([
-			`${CONFIGS}/menu.yaml:4:5: M: the condition "ADMIN" is not registered - did you mean "IS_ADMIN"?`,
-			`${CONFIGS}/menu.yaml:4:5: M: the condition "ACCESS_ADMIN" is not registered`,
-		]);
-		const admin = server.join("Admin", { flags: "abcdefghijklmnopqrstu" });
-		expect(plugin.native("mc_show_menu", admin.id, "M")).toBe(0);
-		expect(menus.screen(admin)).toBeNull();
+		expect(warnings()).toEqual([]);
+
+		const admin = server.join("Admin", { flags: "u" });
+		const player = server.join("Player", { flags: "z" });
+		plugin.native("mc_show_menu", admin.id, "M");
+		plugin.native("mc_show_menu", player.id, "M");
+
+		expect(menus.screen(admin)!.text).toStartWith("M\n\n\\y[1]\\w Kick\n\\y[2]\\w Ban\n");
+		expect(menus.screen(player)!.text).toStartWith("M\n\n\\d[1] Kick\n\\d[2] Ban\n");
 	});
 
 	test("an item of a file with no action is noted, not warned of: choosing it does nothing", async () => {

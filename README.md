@@ -320,6 +320,7 @@ A `visible`, `when`, `enabled`, `activeOn`, `action` or `onTimeout` is a name, s
   | `TEAM_CT` · `TEAM_TERRORIST` · `TEAM_SPECTATOR` · `TEAM_UNASSIGNED` | is in that team |
   | `IS_BOT` | is a bot |
   | `IS_ADMIN` | has any access but a plain user's `z` — AMX Mod X's `is_user_admin` |
+  | `ADMIN` · `ACCESS_ADMIN` | has ban, rcon, admin or menu access — `FLAG_dluy`, as the Pawn menu_core answered them |
   | `FLAG_<letters>` | has any of those `users.ini` letters: `FLAG_ab` |
 
   In a list menu, a condition of the view or a filter is asked of the row's player, and a restriction gets the row as its target. The names are case-insensitive.
@@ -335,7 +336,6 @@ A `visible`, `when`, `enabled`, `activeOn`, `action` or `onTimeout` is a name, s
 > - **An item's name in YAML or JSON is not split on `|`:** its faces are written with `variants`.
 > - **Colours** are tags in a menu file too: `!y`, `!r`, `!d`, `!w`, `!R`. Pawn's codes (`\y`, `\r`) are warned of, with the tag to write, and left out. Text from Pawn — a Pawn plugin's items and titles, a lang dictionary — keeps its codes, and Menu Core reads them as the tags.
 > - **`%time%` and `%target%` are lower case:** `%TIME%` and `%s` are left as written.
-> - **`ADMIN` and `ACCESS_ADMIN` are not built in:** a plugin registers them, or the file writes `IS_ADMIN` (any admin) or `FLAG_<letters>` (`FLAG_d`).
 
 ### INI's columns
 

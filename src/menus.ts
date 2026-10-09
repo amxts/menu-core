@@ -207,7 +207,9 @@ const PAGE_SLOTS = 7;
 const MAX_DEPTH = 5;
 const ALL_KEYS = 1023;
 /** The conditions Menu Core answers itself while nobody registered them - TEAM_<team> and FLAG_<letters> besides. */
-const BUILT_IN_CONDITIONS = ["IS_ALIVE", "IS_DEAD", "IS_BOT", "IS_ADMIN"];
+const BUILT_IN_CONDITIONS = ["IS_ALIVE", "IS_DEAD", "IS_BOT", "IS_ADMIN", "ADMIN", "ACCESS_ADMIN"];
+/** ADMIN and ACCESS_ADMIN, as the Pawn menu_core answered them: ban, rcon, admin or menu access. */
+const ADMIN_FLAGS = "FLAG_dluy";
 /** The teams of TEAM_<team>: the names of `player.team`. */
 const TEAMS = ["CT", "TERRORIST", "SPECTATOR", "UNASSIGNED"];
 const KEY_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
@@ -1605,6 +1607,7 @@ function builtInHolds(player: Player, name: string) {
 	if (upper == "IS_DEAD") return !player.isAlive;
 	if (upper == "IS_BOT") return player.isBot;
 	if (upper == "IS_ADMIN") return isAdmin(player);
+	if (upper == "ADMIN" || upper == "ACCESS_ADMIN") return hasAccess(player, ADMIN_FLAGS);
 	if (upper.startsWith("TEAM_")) return player.team == upper.slice(5);
 	return hasAccess(player, name);
 }
