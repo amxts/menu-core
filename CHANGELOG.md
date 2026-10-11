@@ -2,11 +2,40 @@
 
 ## v0.3.0
 
+> Menu Core for amxts 0.3. It needs `@amxts/core` 0.3 and `@amxts/config-core` 0.2, and `npx amxts upgrade` moves a project to them.
+
+### 👀 Highlights
+
+#### 🧩 Several at once
+
+A plugin that answers a menu file's actions and placeholders can now give them all in one call, and read several menus ahead of time:
+
+```ts
+menus.register("CP_MENU", "CP_MORE");
+menus.addActions({
+	CP_SAVE: save,
+	CP_WHERE: ({ player, menu }) => player.print(`You are in ${menu.name}`),
+});
+menus.addPlaceholders({
+	saved: player => `${savedBy(player)}`,
+});
+```
+
+An action or a placeholder is a function of the player, or of the menu's context when it needs more. These calls cross between plugins, which is why this release needs the 0.3 core.
+
+#### 🛡️ `ADMIN` and `ACCESS_ADMIN` built in
+
+A `menu.ini` written for the Pawn `menu_core` often uses the `ADMIN` condition or the `ACCESS_ADMIN` restriction. Pawn's `menu_core` answered them itself, so here they warned "not registered" and greyed the item out even for an admin. Menu Core now answers both: ban, rcon, admin or menu access (`d`, `l`, `u`, `y`). A plugin that registers either name still has the last word.
+
+### 🩹 Important fixes
+
+- A menu file from the Pawn `menu_core` keeps its words in an `[Основное]` section. It was read as no menu, silently. It now reads as `[MAIN]`, and a section that isn't a menu is reported in the console ([be951c2](https://github.com/amxts/menu-core/commit/be951c2)).
+- Opening the menu a player is already looking at, from a command such as `chooseteam`, starts it again from its first page. Before, it redrew the page they were on and seemed to do nothing. From one of the menu's own items it still stays where it was ([c6afcaf](https://github.com/amxts/menu-core/commit/c6afcaf)).
+- The plugin reports its version, `0.3.0` ([9d471a8](https://github.com/amxts/menu-core/commit/9d471a8)).
+
+### 👉 Changelog
+
 [compare changes](https://github.com/amxts/menu-core/compare/v0.2.1...v0.3.0)
-
-### Summary
-
-For amxts 0.3: needs `@amxts/core` 0.3 and `@amxts/config-core` 0.2 - `addActions` and `addPlaceholders` take several at once and `register` several names, which cross between plugins from 0.3 on. Pawn's `menu_core` files with an `[Основное]` section read as they do there.
 
 ### 🚀 Enhancements
 
