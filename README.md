@@ -134,6 +134,8 @@ const rules = menus.create("LIST_RULES", { title: "Rules" });
 rules.setListSource(({ player }) => lang.translate(player, "RULES").split("|").map(line => menus.textRow(line)));
 ```
 
+A page holds as many lines as numbered rows, 7 less the fixed items. Lines take no keys, so `linesPerPage` gives a page more — `menus.create("LIST_RULES", { title: "Rules", linesPerPage: 11 })`; the bytes still end a page sooner.
+
 Text — a title, an item, a message — is the text itself or a function that gives it for the context. A plain string that is a lang key is translated for the player.
 
 An item says when it is shown and when it can be chosen:
@@ -166,11 +168,11 @@ A menu is an object: `menus.create()` makes one, and its methods fill and open i
 | `menu.runActions(player, line, target?)` | Runs an action line — `"GIVE_HP CLOSE_MENU"` — as a choice in the menu does. |
 | `menu.setTimer(seconds)` · `menu.cancelTimer()` | The countdown everyone looking at it shares. |
 
-Its fields — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` — are set directly; `name`, `kind` and `countdown` are read.
+Its fields — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer`, `linesPerPage` — are set directly; `name`, `kind` and `countdown` are read.
 
 | Function | What it does |
 | --- | --- |
-| `create(name, options?)` | A menu in code, or the existing one with that name. A name starting with `LIST_` makes a list menu. Options: `title` (text or a function), `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
+| `create(name, options?)` | A menu in code, or the existing one with that name. A name starting with `LIST_` makes a list menu. Options: `title` (text or a function), `time`, `hideBack`, `hideExit`, `locked`, `linesPerPage`, `activeWhen`. |
 | `find(name)` · `register(...names)` | A menu by its name; `register` reads them from the file ahead of time: `register("MAIN_MENU", "ADMIN_MENU")`. |
 | `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | The player's menu, whichever it is. |
 | `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` · `addActions({ NAME: handler })` · `addPlaceholders({ name: value })` | What menu files and Pawn plugins name, answered by functions — `%name%` in their text is a placeholder; `addActions` and `addPlaceholders` take several at once. An action or a placeholder is a function of the player, `(player) => ...`, or of the menu's context. An action, a placeholder and a restriction get the menu's context and the `name` they are asked by; a condition, `(player, viewer, name)`, is asked of the row's player in a list menu. A restriction's `message` is said beside an item it greys out, unless the item or the requirement has its own. `menu.addPlaceholder(name, value)` gives one to a single menu. |
@@ -297,6 +299,7 @@ VIEW = {
 | `activeOn` | `ACTIVE_ON` | Conditions the menu opens only under. |
 | `hideBack` · `hideExit` | `HIDE_BACK` · `HIDE_EXIT` | `true` (INI: `YES`) leaves the button out. |
 | `time` · `onTimeout` | `TIME` · `ON_TIMEOUT` | A countdown in seconds, and the actions run when it ends. |
+| `linesPerPage` | `LINES_PER_PAGE` | Text lines a page of a list of text lines alone; left out, as many as numbered rows. |
 | `locked` · `sharedTimer` | `LOCKED` · `GLOBAL` | Items cannot be chosen; one countdown for everyone. |
 | `items` | `ITEMS` | An items menu's items. |
 | `fixedItems` | `FIXED_ITEMS` | Items that keep their `slot`, 1–7, on every page. |

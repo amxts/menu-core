@@ -11,7 +11,7 @@ import { FilterSpec, ItemSpec, MenuFile, MenuSpec, NameKind, RequirementSpec, Va
 /** The keys of a YAML or JSON menu file, each place its own. */
 const FILE_KEYS = ["chatPrefix", "labels", "menus"];
 const LABEL_KEYS = ["exit", "back", "next", "number", "disabled", "page", "time"];
-const MENU_KEYS = ["title", "activeOn", "hideBack", "hideExit", "locked", "sharedTimer", "time", "onTimeout", "items", "fixedItems", "filters", "view"];
+const MENU_KEYS = ["title", "activeOn", "hideBack", "hideExit", "locked", "sharedTimer", "time", "linesPerPage", "onTimeout", "items", "fixedItems", "filters", "view"];
 const ITEM_KEYS = ["name", "placeholder", "action", "visible", "enabled", "message", "spaceBefore", "spaceAfter", "variants"];
 const FIXED_KEYS = ["slot", "name", "placeholder", "action", "visible", "enabled", "message", "spaceBefore", "spaceAfter", "variants"];
 const VIEW_KEYS = ["name", "action", "enabled", "message", "variants"];
@@ -22,7 +22,7 @@ const FILTER_KEYS = ["when", "message"];
 /** The keys of an INI menu file, as menu_core knows them. */
 const INI_MAIN_KEYS = ["PREFIX", "KEY"];
 const INI_LABEL_KEYS = ["EXIT", "BACK", "NEXT", "NUMBER", "DISABLED", "PAGE", "TIME"];
-const INI_MENU_KEYS = ["TITLE", "ACTIVE_ON", "HIDE_BACK", "HIDE_EXIT", "TIME", "ON_TIMEOUT", "LOCKED", "GLOBAL", "ITEMS", "FIXED_ITEMS", "FILTER", "VIEW"];
+const INI_MENU_KEYS = ["TITLE", "ACTIVE_ON", "HIDE_BACK", "HIDE_EXIT", "TIME", "LINES_PER_PAGE", "ON_TIMEOUT", "LOCKED", "GLOBAL", "ITEMS", "FIXED_ITEMS", "FILTER", "VIEW"];
 
 const DIGITS = "0123456789";
 const NAME_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
@@ -126,7 +126,7 @@ function emptyItem(slot: number, ini: boolean) {
 }
 
 function emptyMenu(name: string) {
-	const menu: MenuSpec = { name, title: "", activeOn: "", hideBack: false, hideExit: false, locked: false, sharedTimer: false, time: 0, onTimeout: "", items: [], fixed: [], filters: [], names: [] };
+	const menu: MenuSpec = { name, title: "", activeOn: "", hideBack: false, hideExit: false, locked: false, sharedTimer: false, time: 0, linesPerPage: 0, onTimeout: "", items: [], fixed: [], filters: [], names: [] };
 	return menu;
 }
 
@@ -376,6 +376,7 @@ function treeMenu(node: ConfigNode) {
 	menu.locked = flagField(node, "locked");
 	menu.sharedTimer = flagField(node, "sharedTimer");
 	menu.time = numberField(node, "time");
+	menu.linesPerPage = numberField(node, "linesPerPage");
 	menu.onTimeout = namesField(node, "onTimeout", "action", menu);
 	readTreeContent(node, menu);
 
@@ -614,6 +615,9 @@ function iniMenu(section: ConfigNode) {
 	const time = section.get("TIME");
 	if (time != null && !isInteger(first(time))) warn(whereOf(time), `TIME is a number of seconds, not "${first(time)}"`);
 	menu.time = toInt(first(time));
+	const lines = section.get("LINES_PER_PAGE");
+	if (lines != null && !isInteger(first(lines))) warn(whereOf(lines), `LINES_PER_PAGE is a number of lines, not "${first(lines)}"`);
+	menu.linesPerPage = toInt(first(lines));
 	menu.onTimeout = first(section.get("ON_TIMEOUT"));
 	use(menu, "action", menu.onTimeout, whereOf(section));
 	readIniContent(section, menu);

@@ -3,6 +3,8 @@
 ## Unreleased
 
 - A list source of `textRow` lines alone pages them: 8 Next, 9 Back, the page tag, a page cut before the menu's 512 bytes.
+- `linesPerPage` — a `create()` option, a menu file's `linesPerPage` / `LINES_PER_PAGE` — puts more text lines on a page, e.g. 11; the bytes still cut it.
+- The page tag `[n | m]` ends a title's first line, not its last: the title's other lines go under it.
 
 ## v0.3.0
 

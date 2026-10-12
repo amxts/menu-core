@@ -134,6 +134,8 @@ const rules = menus.create("LIST_RULES", { title: "Правила" });
 rules.setListSource(({ player }) => lang.translate(player, "RULES").split("|").map(line => menus.textRow(line)));
 ```
 
+На странице столько строк, сколько пунктов: 7 без закреплённых. Строкам не нужны клавиши, и `linesPerPage` даёт странице больше — `menus.create("LIST_RULES", { title: "Правила", linesPerPage: 11 })`; байты всё так же кончают страницу раньше.
+
 Текст — заголовок, пункт, сообщение — это сам текст или функция, которая даёт его по контексту. Обычная строка, если это ключ словаря, переводится для игрока.
 
 Пункт говорит, когда он показан и когда его можно выбрать:
@@ -166,11 +168,11 @@ rules.setListSource(({ player }) => lang.translate(player, "RULES").split("|").m
 | `menu.runActions(player, line, target?)` | Выполняет строку действий — `"GIVE_HP CLOSE_MENU"` — как её выполняет выбор в меню. |
 | `menu.setTimer(seconds)` · `menu.cancelTimer()` | Общий отсчёт для всех, кто его смотрит. |
 
-Его поля — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer` — задаются напрямую; `name`, `kind` и `countdown` читаются.
+Его поля — `title`, `time`, `hideBack`, `hideExit`, `locked`, `sharedTimer`, `linesPerPage` — задаются напрямую; `name`, `kind` и `countdown` читаются.
 
 | Функция | Что делает |
 | --- | --- |
-| `create(name, options?)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. Опции: `title` (текст или функция), `time`, `hideBack`, `hideExit`, `locked`, `activeWhen`. |
+| `create(name, options?)` | Меню в коде или уже существующее с таким именем. Имя с `LIST_` делает меню-список. Опции: `title` (текст или функция), `time`, `hideBack`, `hideExit`, `locked`, `linesPerPage`, `activeWhen`. |
 | `find(name)` · `register(...names)` | Меню по имени; `register` заранее читает их из файла: `register("MAIN_MENU", "ADMIN_MENU")`. |
 | `show(player, name, options?)` · `close(player)` · `activeMenu(player)` · `lock(player)` | Меню игрока, какое бы оно ни было. |
 | `addCondition(name, test)` · `addAction(name, handler)` · `addPlaceholder(name, value)` · `addRestriction(name, test, message?)` · `addActions({ NAME: handler })` · `addPlaceholders({ name: value })` | То, что называют файлы меню и Pawn-плагины, — ответы функциями; `%name%` в их тексте — плейсхолдер; `addActions` и `addPlaceholders` принимают несколько сразу. Действие или плейсхолдер — функция игрока, `(player) => ...`, или контекста меню. Действие, плейсхолдер и ограничение получают контекст меню и имя `name`, по которому их спросили; условие, `(player, viewer, name)`, в меню-списке спрашивается об игроке строки. `message` ограничения пишется рядом с пунктом, который оно гасит, если у пункта или требования нет своего. `menu.addPlaceholder(name, value)` задаёт его одному меню. |
@@ -297,6 +299,7 @@ VIEW = {
 | `activeOn` | `ACTIVE_ON` | Условия, только при которых меню открывается. |
 | `hideBack` · `hideExit` | `HIDE_BACK` · `HIDE_EXIT` | `true` (INI: `YES`) убирает кнопку. |
 | `time` · `onTimeout` | `TIME` · `ON_TIMEOUT` | Отсчёт в секундах и действия, когда он закончился. |
+| `linesPerPage` | `LINES_PER_PAGE` | Строк на странице у списка из одних строк текста; без него — столько, сколько пунктов. |
 | `locked` · `sharedTimer` | `LOCKED` · `GLOBAL` | Пункты нельзя выбрать; один отсчёт на всех. |
 | `items` | `ITEMS` | Пункты обычного меню. |
 | `fixedItems` | `FIXED_ITEMS` | Пункты, которые держат свой `slot`, 1–7, на каждой странице. |

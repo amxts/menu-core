@@ -74,6 +74,8 @@ export interface MenuOptions {
 	hideExit?: boolean;
 	/** A lock on the menu: while `true`, items cannot be chosen and no other menu replaces this one. */
 	locked?: boolean;
+	/** Text lines a page of a list of text lines alone, e.g. `11`; left out, as many as numbered rows. The menu's bytes may end a page sooner. */
+	linesPerPage?: number;
 	/** A test the menu opens under: while it says no, the menu does not open for the player. */
 	activeWhen?: (context: MenuContext) => boolean;
 }

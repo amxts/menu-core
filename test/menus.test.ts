@@ -146,6 +146,39 @@ describe("a list of text lines alone", () => {
 		expect(shown.length).toBe(10);
 		expect(shown[9]).toStartWith("\\y10.");
 	});
+
+	test("linesPerPage puts more lines on a page than numbered rows; the page tag ends the title's first line", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice");
+		const lines = (text: string) => text.split("\n").filter(line => line.startsWith("Line "));
+
+		alice.say("/manual");
+		expect(menus.screen(alice)!.text).toStartWith("Manual \\y[\\r1\\y | \\y2\\y]\n\\d(read it all)\n\nLine 1\n");
+		expect(lines(menus.screen(alice)!.text)).toHaveLength(11);
+		expect(menus.screen(alice)!.text).toEndWith("Line 11\n\n\\y[8]\\w Next\n\n\n\\y[0]\\w Exit");
+
+		menus.press(alice, 8);
+		expect(lines(menus.screen(alice)!.text)).toEqual(["Line 12", "Line 13", "Line 14", "Line 15"]);
+	});
+
+	test("linesPerPage still ends a page before 511 bytes", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice");
+		let shown = 0;
+
+		alice.say("/longmanual");
+		const pages = Number(/\| \\y(\d+)/.exec(menus.screen(alice)!.text)![1]);
+		expect(pages).toBeGreaterThan(2);
+
+		for (let page = 0; page < pages; page++) {
+			const text = menus.screen(alice)!.text;
+			expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(511);
+			shown += text.split("\n").filter(line => line.includes("Команда")).length;
+			menus.press(alice, 8);
+		}
+
+		expect(shown).toBe(15);
+	});
 });
 
 describe("a plugin that stops", () => {

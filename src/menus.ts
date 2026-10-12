@@ -31,6 +31,8 @@ export class Menu {
 	sharedTimer = false;
 	/** Seconds on the countdown when the menu opens, e.g. `10`; `0` for none. */
 	time = 0;
+	/** Text lines a page of a list of text lines alone, e.g. `11`; `0` for as many as numbered rows. The menu's bytes may end a page sooner. */
+	linesPerPage = 0;
 	/** Action names run when the countdown ends, e.g. `"CLOSE_MENU"`; `""` closes the menu. */
 	onTimeout = "";
 	/** Condition names the menu opens only under, space-separated, e.g. `"IS_ALIVE !IS_SPECTATOR"`; `""` for always. */
@@ -339,6 +341,7 @@ function registerOne(name: string) {
 	menu.locked = spec.locked;
 	menu.sharedTimer = spec.sharedTimer;
 	menu.time = spec.time;
+	menu.linesPerPage = spec.linesPerPage;
 	menu.onTimeout = spec.onTimeout;
 
 	const state = stateOf(name);
@@ -367,6 +370,7 @@ export function create(name: string, options: MenuOptions = {}) {
 	menu.hideBack = options.hideBack ?? false;
 	menu.hideExit = options.hideExit ?? false;
 	menu.locked = options.locked ?? false;
+	menu.linesPerPage = options.linesPerPage ?? 0;
 	const state = stateOf(name);
 	state.from = callingPlugin();
 	const activeWhen = options.activeWhen;
@@ -1161,7 +1165,9 @@ function header(id: number, viewer: Viewer, menu: Menu, timer: number, page: num
 	const title = translate(id, textOf(menu.title, contextOf(player, viewer.target, menu)));
 	const timed = title.includes("%time%");
 	let text = fill(id, viewer.target, title, "", menu);
-	if (pages > 1) text += ` ${numbered(ui(id, labels.page, DEFAULTS.page), [page + 1, pages])}`;
+	// The page tag ends the title's first line; the title's other lines go under it.
+	const firstLine = text.includes("\n") ? text.indexOf("\n") : text.length;
+	if (pages > 1) text = `${text.slice(0, firstLine)} ${numbered(ui(id, labels.page, DEFAULTS.page), [page + 1, pages])}${text.slice(firstLine)}`;
 	text += "\n";
 	if (timer > 0 && !timed) text += `${numbered(ui(id, labels.time, DEFAULTS.time), [timer])}\n`;
 	return `${text}\n`;
@@ -1306,7 +1312,7 @@ function drawList(screen: Screen, player: Player, viewer: Viewer, menu: Menu, li
 	}
 }
 
-/** Text lines cut into pages: as many lines as numbered rows a page, fewer when the menu's text would pass its bytes. */
+/** Text lines cut into pages: `linesPerPage` lines a page, or as many as numbered rows, fewer when the menu's text would pass its bytes. */
 function linePages(player: Player, viewer: Viewer, menu: Menu, timer: number, rows: ListRow[]) {
 	// The page without its lines: the title with the longest page tag, the fixed items, 8, 9 and 0.
 	const id = player.id;
@@ -1315,6 +1321,7 @@ function linePages(player: Player, viewer: Viewer, menu: Menu, timer: number, ro
 	const keys = [itemLabel(id, 8, ui(id, labels.next, DEFAULTS.next), false), itemLabel(id, 9, ui(id, labels.back, DEFAULTS.back), false), itemLabel(id, 0, ui(id, labels.exit, DEFAULTS.exit), false)];
 	const room = MENU_BYTES - bytesOf(`${frame.text}\n${keys[0]}\n${keys[1]}\n\n${keys[2]}`);
 
+	const most = menu.linesPerPage > 0 ? menu.linesPerPage : perPage(menu);
 	const pages: ListRow[][] = [];
 	let page: ListRow[] = [];
 	let left = room;
@@ -1322,7 +1329,7 @@ function linePages(player: Player, viewer: Viewer, menu: Menu, timer: number, ro
 	for (const row of rows) {
 		const size = bytesOf(row.text) + 1;
 
-		if (page.length > 0 && (page.length == perPage(menu) || size > left)) {
+		if (page.length > 0 && (page.length == most || size > left)) {
 			pages.push(page);
 			page = [];
 			left = room;
@@ -1336,7 +1343,7 @@ function linePages(player: Player, viewer: Viewer, menu: Menu, timer: number, ro
 	return pages;
 }
 
-/** A page of text lines: a line where a numbered row would be, the fixed items in their slots. */
+/** A page of text lines: a line where a numbered row would be, the fixed items in their slots, the lines past the seventh slot after it. */
 function drawLines(screen: Screen, player: Player, viewer: Viewer, menu: Menu, lines: ListRow[]) {
 	let next = 0;
 	for (let slot = 0; slot < PAGE_SLOTS; slot++) {
@@ -1344,6 +1351,8 @@ function drawLines(screen: Screen, player: Player, viewer: Viewer, menu: Menu, l
 		screen.text += `${lines[next].text}\n`;
 		next++;
 	}
+
+	for (; next < lines.length; next++) screen.text += `${lines[next].text}\n`;
 }
 
 /** The bytes of text in UTF-8, as the menu sends it: a Cyrillic letter is two. */

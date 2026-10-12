@@ -148,6 +148,7 @@ export interface MenuSpec {
 	locked: boolean;
 	sharedTimer: boolean;
 	time: number;
+	linesPerPage: number;
 	onTimeout: string;
 	/** An items menu's items; a list menu's row template, its VIEW. */
 	items: ItemSpec[];
