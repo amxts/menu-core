@@ -203,6 +203,8 @@ const DEFAULTS: Labels = {
 
 /** Items a page; 8 and 9 turn pages, 0 closes. */
 const PAGE_SLOTS = 7;
+/** The bytes a menu's text holds, its closing zero left out. */
+const MENU_BYTES = 511;
 /** A menu that opens a menu that opens a menu ... stops here. */
 const MAX_DEPTH = 5;
 const ALL_KEYS = 1023;
@@ -984,7 +986,7 @@ function usesCondition(menu: Menu, name: string) {
 
 function viewerOf(id: number) {
 	if (!viewers.has(id)) {
-		const made: Viewer = { menu: "", page: 0, nextPage: -1, choosing: "", target: 0, history: [], slots: [], rows: 0, text: "", locked: false, timer: 0, ticker: 0, depth: 0 };
+		const made: Viewer = { menu: "", page: 0, nextPage: -1, choosing: "", target: 0, history: [], slots: [], pages: 1, text: "", locked: false, timer: 0, ticker: 0, depth: 0 };
 		viewers.set(id, made);
 	}
 
@@ -1078,18 +1080,20 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 	}
 
 	const items = menu.kind == "list" ? noItems() : shownItems(player, viewer, menu);
+	// A list of text lines alone pages its lines.
+	const lines = menu.kind == "list" && listing.count == 0 ? linePages(player, viewer, menu, timer, listing.rows) : [];
 	const total = menu.kind == "list" ? listing.count : items.length;
-	const pages = Math.max(1, Math.ceil(total / perPage(menu)));
+	const pages = lines.length > 0 ? lines.length : Math.max(1, Math.ceil(total / perPage(menu)));
 	const page = Math.max(0, Math.min(viewer.page, pages - 1));
 	viewer.page = page;
-	viewer.rows = total;
+	viewer.pages = pages;
 
 	if (timer > 0) startCountdown(viewer, id, menu, timer, given);
 
-	const screen: Screen = { text: header(id, viewer, menu, timer, page, pages), keys: [], slots: [] };
-	for (let slot = 0; slot < PAGE_SLOTS; slot++) screen.slots.push({ action: "", target: 0 });
+	const screen = blankScreen(header(id, viewer, menu, timer, page, pages));
 
-	if (menu.kind == "list") drawList(screen, player, viewer, menu, listing, page);
+	if (lines.length > 0) drawLines(screen, player, viewer, menu, lines[page]);
+	else if (menu.kind == "list") drawList(screen, player, viewer, menu, listing, page);
 	else drawItems(screen, player, viewer, menu, items, page);
 
 	const canGoBack = viewer.history.length > 0 || remember;
@@ -1123,6 +1127,12 @@ function draw(player: Player, viewer: Viewer, menu: Menu, options: MenuShowOptio
 function noListing() {
 	const listing: Listing = { rows: [], fromSource: false, count: 0 };
 	return listing;
+}
+
+function blankScreen(text: string) {
+	const screen: Screen = { text, keys: [], slots: [] };
+	for (let slot = 0; slot < PAGE_SLOTS; slot++) screen.slots.push({ action: "", target: 0 });
+	return screen;
 }
 
 function noItems() {
@@ -1296,6 +1306,53 @@ function drawList(screen: Screen, player: Player, viewer: Viewer, menu: Menu, li
 	}
 }
 
+/** Text lines cut into pages: as many lines as numbered rows a page, fewer when the menu's text would pass its bytes. */
+function linePages(player: Player, viewer: Viewer, menu: Menu, timer: number, rows: ListRow[]) {
+	// The page without its lines: the title with the longest page tag, the fixed items, 8, 9 and 0.
+	const id = player.id;
+	const frame = blankScreen(header(id, viewer, menu, timer, rows.length, rows.length));
+	drawLines(frame, player, viewer, menu, []);
+	const keys = [itemLabel(id, 8, ui(id, labels.next, DEFAULTS.next), false), itemLabel(id, 9, ui(id, labels.back, DEFAULTS.back), false), itemLabel(id, 0, ui(id, labels.exit, DEFAULTS.exit), false)];
+	const room = MENU_BYTES - bytesOf(`${frame.text}\n${keys[0]}\n${keys[1]}\n\n${keys[2]}`);
+
+	const pages: ListRow[][] = [];
+	let page: ListRow[] = [];
+	let left = room;
+
+	for (const row of rows) {
+		const size = bytesOf(row.text) + 1;
+
+		if (page.length > 0 && (page.length == perPage(menu) || size > left)) {
+			pages.push(page);
+			page = [];
+			left = room;
+		}
+
+		page.push(row);
+		left -= size;
+	}
+
+	if (page.length > 0) pages.push(page);
+	return pages;
+}
+
+/** A page of text lines: a line where a numbered row would be, the fixed items in their slots. */
+function drawLines(screen: Screen, player: Player, viewer: Viewer, menu: Menu, lines: ListRow[]) {
+	let next = 0;
+	for (let slot = 0; slot < PAGE_SLOTS; slot++) {
+		if (drawFixed(screen, player, viewer, menu, slot, viewer.target) || next >= lines.length) continue;
+		screen.text += `${lines[next].text}\n`;
+		next++;
+	}
+}
+
+/** The bytes of text in UTF-8, as the menu sends it: a Cyrillic letter is two. */
+function bytesOf(text: string) {
+	// An unpaired surrogate would stop encodeURIComponent; text from lang files and the game has none.
+	const encoded = encodeURIComponent(text);
+	return encoded.length - 2 * (encoded.split("%").length - 1);
+}
+
 function drawRow(screen: Screen, player: Player, viewer: Viewer, menu: Menu, template: MenuItem, row: ListRow, slot: number) {
 	const id = player.id;
 	const variants = variantsFor(template, player, row.target, menu);
@@ -1457,8 +1514,7 @@ function pressed(player: Player, key: number) {
 	if (menu == null) return;
 
 	if (key == 7) {
-		const pages = Math.max(1, Math.ceil(viewer.rows / perPage(menu)));
-		if (viewer.page >= pages - 1) return;
+		if (viewer.page >= viewer.pages - 1) return;
 		viewer.page++;
 		open(player, menu.name, { skipHistory: true }, viewer.target);
 		return;

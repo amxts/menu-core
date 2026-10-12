@@ -110,6 +110,44 @@ describe("a list menu", () => {
 	});
 });
 
+describe("a list of text lines alone", () => {
+	test("pages its lines as numbered rows: no numbers, the page tag, 8 Next and 9 Back", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice");
+
+		alice.say("/rules");
+		expect(menus.screen(alice)!.text).toBe("Rules \\y[\\r1\\y | \\y2\\y]\n\nRule 1\nRule 2\nRule 3\nRule 4\nRule 5\nRule 6\nRule 7\n\n\\y[8]\\w Next\n\n\n\\y[0]\\w Exit");
+		expect(menus.screen(alice)!.keys).toEqual([8, 0]);
+
+		menus.press(alice, 8);
+		expect(menus.screen(alice)!.text).toBe("Rules \\y[\\r2\\y | \\y2\\y]\n\nRule 8\nRule 9\nRule 10\n\n\n\\y[9]\\w Back\n\n\\y[0]\\w Exit");
+		expect(menus.press(alice, 8)).toBe(false);
+
+		menus.press(alice, 9);
+		expect(menus.screen(alice)!.text).toContain("Rule 7\n");
+	});
+
+	test("a page ends before the menu passes 511 bytes, Cyrillic two a letter", async () => {
+		const { server, menus } = await playground();
+		const alice = server.join("Alice");
+		const shown: string[] = [];
+
+		alice.say("/help");
+		const pages = Number(/\| \\y(\d+)/.exec(menus.screen(alice)!.text)![1]);
+		expect(pages).toBeGreaterThan(2);
+
+		for (let page = 0; page < pages; page++) {
+			const text = menus.screen(alice)!.text;
+			expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(511);
+			shown.push(...text.split("\n").filter(line => line.includes("Команда")));
+			menus.press(alice, 8);
+		}
+
+		expect(shown.length).toBe(10);
+		expect(shown[9]).toStartWith("\\y10.");
+	});
+});
+
 describe("a plugin that stops", () => {
 	/** The playground's plugin of that file. */
 	function pluginOf(server: FakeServer, file: string) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- A list source of `textRow` lines alone pages them: 8 Next, 9 Back, the page tag, a page cut before the menu's 512 bytes.
+
 ## v0.3.0
 
 > Menu Core for amxts 0.3. It needs `@amxts/core` 0.3 and `@amxts/config-core` 0.2, and `npx amxts upgrade` moves a project to them.

@@ -315,8 +315,8 @@ export interface Viewer {
 	target: number;
 	history: HistoryStep[];
 	slots: ShownSlot[];
-	/** The rows the open menu pages through. */
-	rows: number;
+	/** The pages of the open menu. */
+	pages: number;
 	/** What the menu shows, as it was last drawn. */
 	text: string;
 	locked: boolean;

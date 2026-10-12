@@ -127,6 +127,13 @@ vote.addItem({
 });
 ```
 
+A list source of `textRow` lines alone pages its lines as it pages rows: a line where a row would be, without a number, 8 and 9 turn the page, the page in the title. A page ends sooner when the next line would take the menu past its 512 bytes — a Cyrillic letter is two, a colour tag counts:
+
+```ts
+const rules = menus.create("LIST_RULES", { title: "Rules" });
+rules.setListSource(({ player }) => lang.translate(player, "RULES").split("|").map(line => menus.textRow(line)));
+```
+
 Text — a title, an item, a message — is the text itself or a function that gives it for the context. A plain string that is a lang key is translated for the player.
 
 An item says when it is shown and when it can be chosen:
