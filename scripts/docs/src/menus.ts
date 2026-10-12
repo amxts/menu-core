@@ -43,6 +43,10 @@ export default {
 		en: `Seconds on the countdown when the menu opens, e.g. \`10\`; \`0\` for none.`,
 		ru: `Секунды отсчёта при открытии меню, например \`10\`; \`0\` — без отсчёта.`,
 	},
+	"Menu.linesPerPage": {
+		en: `Text lines a page of a list of text lines alone, e.g. \`11\`; \`0\` for as many as numbered rows. The menu's bytes may end a page sooner.`,
+		ru: `Строк текста на странице меню из одних строк текста, например \`11\`; \`0\` — столько же, сколько нумерованных строк. Байты меню могут закончить страницу раньше.`,
+	},
 	"Menu.onTimeout": {
 		en: `Action names run when the countdown ends, e.g. \`"CLOSE_MENU"\`; \`""\` closes the menu.`,
 		ru: `Имена действий, которые выполняются, когда отсчёт кончился, например \`"CLOSE_MENU"\`; \`""\` закрывает меню.`,

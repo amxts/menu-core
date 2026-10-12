@@ -123,6 +123,10 @@ export default {
 		en: `A lock on the menu: while \`true\`, items cannot be chosen and no other menu replaces this one.`,
 		ru: `Блокировка меню: пока \`true\`, пункты нельзя выбрать и другое меню не заменяет это.`,
 	},
+	"MenuOptions.linesPerPage": {
+		en: `Text lines a page of a list of text lines alone, e.g. \`11\`; left out, as many as numbered rows. The menu's bytes may end a page sooner.`,
+		ru: `Строк текста на странице меню из одних строк текста, например \`11\`; если не задано — столько же, сколько нумерованных строк. Байты меню могут закончить страницу раньше.`,
+	},
 	"MenuOptions.activeWhen": {
 		en: `A test the menu opens under: while it says no, the menu does not open for the player.`,
 		ru: `Проверка, при которой меню открывается: пока она отвечает «нет», меню игроку не открывается.`,
