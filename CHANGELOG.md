@@ -1,10 +1,38 @@
 # Changelog
 
-## Unreleased
+## v0.3.1
 
-- A list source of `textRow` lines alone pages them: 8 Next, 9 Back, the page tag, a page cut before the menu's 512 bytes.
-- `linesPerPage` — a `create()` option, a menu file's `linesPerPage` / `LINES_PER_PAGE` — puts more text lines on a page, e.g. 11; the bytes still cut it.
-- The page tag `[n | m]` ends a title's first line, not its last: the title's other lines go under it.
+> For cores of the 0.3 line, from 0.3.1.
+
+### 👀 Highlights
+
+#### 📄 Pages of text
+
+A menu made only of text lines - rules, a help screen, a top list - pages itself: `8 Next`, `9 Back` and the page tag, a page ending before the menu's 512 bytes. `linesPerPage` puts more lines on a page:
+
+```ts
+const rules = menus.create("LIST_RULES", { title: "Rules", linesPerPage: 11 });
+rules.setListSource(({ player }) => lang.translate(player, "RULES").split("|").map(line => menus.textRow(line)));
+```
+
+The page tag `[n | m]` ends the title's first line, so a title of two lines keeps its second under it.
+
+### 👉 Changelog
+
+[compare changes](https://github.com/amxts/menu-core/compare/v0.3.0...v0.3.1)
+
+### 🚀 Enhancements
+
+- **menus:** A list of text lines alone pages them ([d70d3e6](https://github.com/amxts/menu-core/commit/d70d3e6))
+- **menus:** `linesPerPage`, and the page tag ends a title's first line ([478a052](https://github.com/amxts/menu-core/commit/478a052))
+
+### 📖 Documentation
+
+- **menus:** `linesPerPage` hints for Menu and MenuOptions, en and ru ([fafe7a2](https://github.com/amxts/menu-core/commit/fafe7a2))
+
+### ❤️ Contributors
+
+- Ernest Manukyan ([@kukson777](https://github.com/kukson777))
 
 ## v0.3.0
 
