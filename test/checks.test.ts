@@ -240,7 +240,7 @@ describe("names nobody registered", () => {
 		"",
 	].join("\n");
 
-	test("are checked on the first frame - a Pawn plugin that registers after the file is read is heard", async () => {
+	test("are checked on the first frame - a Pawn plugin that registers after the file is read is heard; a menu nobody registers is quiet until one does", async () => {
 		const { server, plugin, warnings } = await boot({ "menu.yaml": YAML });
 		plugin.native("mc_register_menu", "MAIN_MENU");
 		plugin.native("mc_register_condition", "IS_ALIVE", "Yes");
@@ -252,7 +252,7 @@ describe("names nobody registered", () => {
 
 		server.advance(0);
 		const at = (line: number, column: number) => `${CONFIGS}/menu.yaml:${line}:${column}`;
-		expect(warnings()).toEqual([
+		const main = [
 			`${at(3, 5)}: MAIN_MENU: the placeholder %who% is not registered`,
 			`${at(4, 5)}: MAIN_MENU: the condition "IS_SPECTATR" is not registered - did you mean "IS_SPECTATOR"?`,
 			`${at(6, 24)}: MAIN_MENU: SHOW_ADMN_MENU opens the menu "ADMN_MENU", which is not there - did you mean "ADMIN_MENU"?`,
@@ -260,8 +260,11 @@ describe("names nobody registered", () => {
 			`${at(6, 48)}: MAIN_MENU: the condition "VIP" is not registered`,
 			`${at(8, 28)}: MAIN_MENU: the action "RUN_AWAY" is not registered`,
 			`${at(8, 46)}: MAIN_MENU: the condition "LEVEL" is not registered`,
-			`${at(11, 5)}: ADMIN_MENU: the action "CLOSE_MENUU" is not registered - did you mean "CLOSE_MENU"?`,
-		]);
+		];
+		expect(warnings()).toEqual(main);
+
+		plugin.native("mc_register_menu", "ADMIN_MENU");
+		expect(warnings()).toEqual(main.concat([`${at(11, 5)}: ADMIN_MENU: the action "CLOSE_MENUU" is not registered - did you mean "CLOSE_MENU"?`]));
 	});
 
 	test("a restriction \"*\" answers for every name", async () => {

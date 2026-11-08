@@ -7,7 +7,7 @@ import { callingPlugin, onPluginStop, publicFor, showMenu } from "@amxts/core/ki
 import { GetLangTransKey, get_maxplayers, register_menucmd, register_menuid } from "@amxts/core/natives";
 import { ActionHandler, ActionTest, ConditionFilter, ConditionTest, ListRow, ListSource, MenuContext, MenuEventType, MenuItemOptions, MenuKind, MenuOptions, MenuShowOptions, NamedContext, PlaceholderValue, RestrictionTest, RowTest } from "./types";
 
-import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, ListFilter, Screen, Labels, Check, MenuItem, Variant, ItemSpec, MenuFile, NameKind, NameUse, RequirementSpec, addNamedFilter, blankItem, checksOf, forgetState, iniItem, insertItem, stateOf, textOf } from "./internal";
+import { ConditionEntry, ActionEntry, PlaceholderEntry, RestrictionEntry, ActionCheck, FilterEntry, SourceEntry, Viewer, Listing, ListFilter, Screen, Labels, Check, MenuItem, Variant, ItemSpec, MenuFile, MenuSpec, NameKind, NameUse, RequirementSpec, addNamedFilter, blankItem, checksOf, forgetState, iniItem, insertItem, stateOf, textOf } from "./internal";
 import { readMenuFile, suggestion, warn } from "./menu-file";
 
 /**
@@ -331,7 +331,8 @@ export function register(...names: string[]) {
 function registerOne(name: string) {
 	const known = find(name);
 	if (known != null) return known;
-	const spec = loadedFile().menus.find(each => each.name == name);
+	const file = loadedFile();
+	const spec = file.menus.find(each => each.name == name);
 	if (spec == null) return null;
 
 	const menu = new Menu(name, spec.title);
@@ -352,7 +353,9 @@ function registerOne(name: string) {
 		else addNamedFilter(name, filter.condition, filter.message);
 	}
 
-	return add(menu);
+	const added = add(menu);
+	if (checking) checkMenu(spec, file);
+	return added;
 }
 
 /**
@@ -681,7 +684,7 @@ function checkOfSpec(requirement: RequirementSpec) {
 	return check;
 }
 
-/** The first frame: every plugin has registered its names, so the menu file's are checked - now, and in every file read from now on. */
+/** The first frame: every plugin has registered its names, so the registered menus' are checked - now, and each menu registered from now on as it is. */
 function startChecking() {
 	checking = true;
 	const known = menuFile;
@@ -689,11 +692,19 @@ function startChecking() {
 	else loadedFile();
 }
 
-/** Warns of each condition, action, restriction and placeholder a menu file names that nobody registered. */
+/**
+ * Checks the menus of the file a plugin has registered. One nobody registers -
+ * of a plugin that is not loaded on this map - stays quiet until it is.
+ */
 function checkNames(file: MenuFile) {
 	for (const menu of file.menus) {
-		for (const use of menu.names) checkName(use, menu.name, file);
+		if (menuByName.has(menu.name)) checkMenu(menu, file);
 	}
+}
+
+/** Warns of each condition, action, restriction and placeholder a menu names that nobody registered. */
+function checkMenu(menu: MenuSpec, file: MenuFile) {
+	for (const use of menu.names) checkName(use, menu.name, file);
 }
 
 function checkName(use: NameUse, menu: string, file: MenuFile) {
