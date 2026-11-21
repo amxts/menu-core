@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.3.2
+
+> For the 0.3 line of the core.
+
+### 🩹 Important fixes
+
+- A menu file shared by several plugins, such as one file for every mode of a server, warned on every map about each name of a plugin that was not loaded: its actions, conditions and placeholders "not registered". Now only the menus a plugin uses are checked: those it registers, shows or opens with `SHOW_<MENU>`. A menu nobody uses stays quiet until a plugin uses it ([25a5534](https://github.com/amxts/menu-core/commit/25a5534)).
+
+### 👉 Changelog
+
+[compare changes](https://github.com/amxts/menu-core/compare/v0.3.1...v0.3.2)
+
+### 🩹 Fixes
+
+- **menus:** Check only the menus a plugin uses ([25a5534](https://github.com/amxts/menu-core/commit/25a5534))
+
+### ❤️ Contributors
+
+- Ernest Manukyan ([@kukson777](https://github.com/kukson777))
+
 ## v0.3.1
 
 > For cores of the 0.3 line, from 0.3.1.
