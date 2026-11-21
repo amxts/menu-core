@@ -165,6 +165,10 @@ export class MenuEvent {
 		public menu: Menu,
 		/** On `"close"`: `true` when the menu closed because its time ran out. */
 		public timeout: boolean,
+		/** On `"message"`: the text in the player's language, without the chat prefix - e.g. "Spectator list is empty". */
+		public text = "",
+		/** On `"message"`: the text as the menu file has it - a translation key, e.g. `"MYMENU_SPEC_EMPTY"`, or the text itself. */
+		public key = "",
 	) {}
 
 	/** On `"show"`: keeps the menu from opening. */
@@ -1517,15 +1521,21 @@ function sayEmpty(player: Player, menu: Menu) {
 		const passing = server.players.some(target => passesFilter(filter, target.id, player.id, menu));
 
 		if (!passing && filter.message.length > 0) {
-			say(player, filter.message);
+			say(player, menu, filter.message);
 			return;
 		}
 	}
-	if (filters[0].message.length > 0) say(player, filters[0].message);
+	if (filters[0].message.length > 0) say(player, menu, filters[0].message);
 }
 
-function say(player: Player, message: string) {
-	player.print(`${ui(player.id, labels.prefix, DEFAULTS.prefix)} ${translate(player.id, message)}`);
+/** Tells the player something in the chat, after the prefix - unless a `"message"` listener tells him otherwise. */
+function say(player: Player, menu: Menu, message: string) {
+	const text = translate(player.id, message);
+	const event = new MenuEvent(player, menu, false, text, message);
+	for (const entry of listeners) {
+		if (hears(entry, "message", menu)) entry.listener(event);
+	}
+	if (!event.defaultPrevented) player.print(`${ui(player.id, labels.prefix, DEFAULTS.prefix)} ${text}`);
 }
 
 function pressed(player: Player, key: number) {

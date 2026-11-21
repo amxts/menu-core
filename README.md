@@ -162,7 +162,7 @@ A menu is an object: `menus.create()` makes one, and its methods fill and open i
 | `menu.addFixedItem(slot, item)` | An item that keeps slot 1–7 on every page. |
 | `menu.addFilter(test, message?)` | A list menu leaves out the rows `test` says no to; `target` is the row's player. |
 | `menu.setListSource(rows)` | A list menu's own rows: `listRow(row, text)`, `textRow(text)`. |
-| `menu.addEventListener("open" \| "close" \| "show", listener)` | This menu's events; `"show"` comes before it opens, `event.preventDefault()` stops it. |
+| `menu.addEventListener("open" \| "close" \| "show" \| "message", listener)` | This menu's events; `"show"` comes before it opens, `event.preventDefault()` stops it. `"message"` (0.3.3) comes before Menu Core tells the player something in the chat - an empty list's `FILTER` message - with `event.text`; `event.preventDefault()` keeps it out of the chat, so the plugin can show it its own way. |
 | `menu.show(player, options?)` | Opens the menu; `false` when it does not open. Options: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
 | `menu.refresh()` · `menu.close()` · `menu.clearItems()` | Redraw it or close it for whoever looks at it; remove its items. |
 | `menu.runActions(player, line, target?)` | Runs an action line — `"GIVE_HP CLOSE_MENU"` — as a choice in the menu does. |

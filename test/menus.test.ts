@@ -75,13 +75,14 @@ describe("a list menu", () => {
 		expect(bob.chat).toContain("Alice says hello");
 	});
 
-	test("with no row left it does not open, and says the filter's message", async () => {
+	test("with no row left it does not open, and says the filter's message - where its \"message\" listener says it", async () => {
 		const { server, menus } = await playground();
 		const alice = server.join("Alice");
 
 		alice.say("/greet");
 		expect(menus.screen(alice)).toBe(null);
-		expect(alice.chat).toContain("Nobody to greet");
+		expect(alice.center).toContain("Nobody to greet");
+		expect(alice.chat).not.toContain("Nobody to greet");
 	});
 
 	test("a list source's rows: the item's functions get the row's number", async () => {

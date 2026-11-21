@@ -173,7 +173,7 @@ export type RowTest = (context: MenuContext) => boolean;
 export type ListSource = (context: MenuContext) => ListRow[] | null;
 
 /** A menu event's type, one of `"open"` and `"close"` as they happen, or `"show"` before a menu opens, to stop it. */
-export type MenuEventType = "open" | "close" | "show";
+export type MenuEventType = "open" | "close" | "show" | "message";
 
 /** Menu Core's options: `menus` in `amxts.config.ts`. */
 export interface MenuCoreOptions {

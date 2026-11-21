@@ -162,7 +162,7 @@ rules.setListSource(({ player }) => lang.translate(player, "RULES").split("|").m
 | `menu.addFixedItem(slot, item)` | Пункт, который на каждой странице занимает слот 1–7. |
 | `menu.addFilter(test, message?)` | Меню-список пропускает строки, на которые `test` отвечает «нет»; `target` — игрок строки. |
 | `menu.setListSource(rows)` | Свои строки меню-списка: `listRow(row, text)`, `textRow(text)`. |
-| `menu.addEventListener("open" \| "close" \| "show", listener)` | События этого меню; `"show"` приходит до открытия, `event.preventDefault()` его отменяет. |
+| `menu.addEventListener("open" \| "close" \| "show" \| "message", listener)` | События этого меню; `"show"` приходит до открытия, `event.preventDefault()` его отменяет. `"message"` (0.3.3) приходит до того, как Menu Core что-то скажет игроку в чат, — например, сообщение `FILTER` пустого списка, — с `event.text`; `event.preventDefault()` убирает его из чата, и плагин может показать его по-своему. |
 | `menu.show(player, options?)` | Открывает меню; `false`, если оно не открылось. Опции: `time`, `target`, `resetHistory`, `force`, `skipHistory`. |
 | `menu.refresh()` · `menu.close()` · `menu.clearItems()` | Перерисовать или закрыть у всех, кто его смотрит; убрать пункты. |
 | `menu.runActions(player, line, target?)` | Выполняет строку действий — `"GIVE_HP CLOSE_MENU"` — как её выполняет выбор в меню. |

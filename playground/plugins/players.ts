@@ -13,6 +13,12 @@ players.addEventListener("close", (event) => {
 	if (event.timeout) event.player.print("Too slow");
 });
 
+// Why the list is empty, in the middle of the screen instead of the chat.
+players.addEventListener("message", (event) => {
+	event.player.print(event.text, "center");
+	event.preventDefault();
+});
+
 server.addCommand("/greet", ({ player }) => {
 	players.show(player, { time: 10 });
 });
