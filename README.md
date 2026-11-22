@@ -103,6 +103,8 @@ Every function of a menu — a title, `visible`, `enabled`, `onSelect` — gets 
 - `row` — the row's number in a list menu, as `listRow()` gave it: an entity, an index of your own list — or a player's `id` in a list of players;
 - `menu` — the menu.
 
+A function written apart names the context by its type in the module: `function wounded({ player }: menus.MenuContext)`, and `menus.NamedContext` for an action or a placeholder registered by name. The `MenuContext` a plugin has without an import is another type - the context of the core's own `new Menu(...)`, with `data` in place of `target` and `row`.
+
 A list menu (its name starts with `LIST_`) has a row per player, drawn with its first item:
 
 ```ts
