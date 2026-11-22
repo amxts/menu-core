@@ -175,6 +175,14 @@ export default {
 		en: `On \`"close"\`: \`true\` when the menu closed because its time ran out.`,
 		ru: `На \`"close"\`: \`true\`, если меню закрылось, потому что вышло время.`,
 	},
+	"MenuEvent.text": {
+		en: `On \`"message"\`: the text in the player's language, without the chat prefix - e.g. \`"Spectator list is empty"\`.`,
+		ru: `На \`"message"\`: текст на языке игрока, без префикса чата - например, «Список наблюдателей пуст».`,
+	},
+	"MenuEvent.key": {
+		en: `On \`"message"\`: the text as the menu file has it - a translation key, e.g. \`"MYMENU_SPEC_EMPTY"\`, or the text itself.`,
+		ru: `На \`"message"\`: текст, как он записан в файле меню - ключ перевода, например \`"MYMENU_SPEC_EMPTY"\`, или сам текст.`,
+	},
 	"MenuEvent.preventDefault": {
 		en: `On \`"show"\`: keeps the menu from opening.`,
 		ru: `На \`"show"\`: не даёт меню открыться.`,

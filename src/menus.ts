@@ -157,6 +157,10 @@ export class Menu {
 export class MenuEvent {
 	/** A mark of `preventDefault()`: `true` once it was called. */
 	defaultPrevented = false;
+	/** On `"message"`: the text in the player's language, without the chat prefix - e.g. `"Spectator list is empty"`. */
+	text = "";
+	/** On `"message"`: the text as the menu file has it - a translation key, e.g. `"MYMENU_SPEC_EMPTY"`, or the text itself. */
+	key = "";
 
 	constructor(
 		/** The player whose menu it is. */
@@ -165,10 +169,6 @@ export class MenuEvent {
 		public menu: Menu,
 		/** On `"close"`: `true` when the menu closed because its time ran out. */
 		public timeout: boolean,
-		/** On `"message"`: the text in the player's language, without the chat prefix - e.g. "Spectator list is empty". */
-		public text = "",
-		/** On `"message"`: the text as the menu file has it - a translation key, e.g. `"MYMENU_SPEC_EMPTY"`, or the text itself. */
-		public key = "",
 	) {}
 
 	/** On `"show"`: keeps the menu from opening. */
@@ -1531,7 +1531,9 @@ function sayEmpty(player: Player, menu: Menu) {
 /** Tells the player something in the chat, after the prefix - unless a `"message"` listener tells him otherwise. */
 function say(player: Player, menu: Menu, message: string) {
 	const text = translate(player.id, message);
-	const event = new MenuEvent(player, menu, false, text, message);
+	const event = new MenuEvent(player, menu, false);
+	event.text = text;
+	event.key = message;
 	for (const entry of listeners) {
 		if (hears(entry, "message", menu)) entry.listener(event);
 	}
