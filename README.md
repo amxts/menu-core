@@ -295,7 +295,7 @@ VIEW = {
 | YAML, JSON | INI | What it is |
 | --- | --- | --- |
 | `chatPrefix` | `[MAIN]` `PREFIX` | The chat prefix of Menu Core's messages. The Pawn menu_core's `[Основное]` is read as `[MAIN]`. |
-| `labels`: `exit`, `back`, `next`, `number`, `disabled`, `page`, `time` | `[MAIN]` `KEY = { ... }` | The words of the buttons, the page and the countdown. |
+| `labels`: `exit`, `back`, `next`, `number`, `disabled`, `page`, `time` | `[MAIN]` `KEY = { ... }` | The words of the buttons, the page and the countdown. A lang key no dictionary has gives Menu Core's own word: `Exit`, `Back`, `Next`. |
 | `menus`: `{ NAME: menu }` | `[NAME]` | The menus; a name starting with `LIST_` is a list menu. |
 | `title` | `TITLE` | The title; a menu has one. |
 | `activeOn` | `ACTIVE_ON` | Conditions the menu opens only under. |
@@ -435,5 +435,7 @@ test("an item runs the action a Pawn plugin registered", async () => {
 	expect(calls).toEqual(["RESET_SCORE"]);
 });
 ```
+
+`screen(player).text` is the menu as the player sees it: the text `show_menu` was given, colour codes (`\y`, `\r`) and all, each lang key translated in the player's language from the dictionaries the server loaded and `menus.translate()`. A button's key that no dictionary has shows Menu Core's own word — `Next` for a `NEXT = MYPLUGIN_MENU_NEXT` the test has no line for, as on a server — and an item's key shows as the key. To see the file's word in a test, give its key a line: `menus.translate({ MYPLUGIN_MENU_NEXT: "More" })`.
 
 The module's own tests are in `test/` (`npm test`); `playground/` is a project with Menu Core in it, which they load too.
