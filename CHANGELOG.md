@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.3.3
+
+> For amxts 0.3.7 and later.
+
+### 👀 Highlights
+
+#### 💬 An empty list's message, where you want it
+
+When a list has nobody to show, its `FILTER` message goes to the chat. A `"message"` listener can show it somewhere else, for example in the centre of the screen:
+
+```ts
+menu.addEventListener("message", (event) => {
+	event.preventDefault();
+	event.player.print(event.text, "center");
+});
+```
+
+### 🩹 Important fixes
+
+- `amxts_plugins` showed Menu Core as 0.3.0 whatever its version. It says the package's version now ([9958c49](https://github.com/amxts/menu-core/commit/9958c49)).
+
+### 👉 Changelog
+
+[compare changes](https://github.com/amxts/menu-core/compare/v0.3.2...v0.3.3)
+
+### 🚀 Enhancements
+
+- **menus:** A "message" event for what Menu Core says ([7013d48](https://github.com/amxts/menu-core/commit/7013d48))
+
+### 🩹 Fixes
+
+- **menus:** MenuEvent's text and key as fields, with words ([5f3b5e8](https://github.com/amxts/menu-core/commit/5f3b5e8))
+- The plugin says the package's version ([9958c49](https://github.com/amxts/menu-core/commit/9958c49))
+
+### 📖 Documentation
+
+- A callback written apart takes `menus.MenuContext` ([e3e2497](https://github.com/amxts/menu-core/commit/e3e2497))
+- **menus:** Where a test's Next comes from ([477a18d](https://github.com/amxts/menu-core/commit/477a18d))
+
+### ❤️ Contributors
+
+- Ernest Manukyan ([@kukson777](https://github.com/kukson777))
+
 ## v0.3.2
 
 > For the 0.3 line of the core.
